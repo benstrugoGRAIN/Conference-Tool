@@ -1,510 +1,547 @@
-import { useState, useEffect, useCallback } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Grain — Conference Intelligence</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', system-ui, sans-serif; background: #f8f9fa; color: #111827; min-height: 100vh; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #f1f1f1; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+  input, select, textarea, button { font-family: 'DM Sans', system-ui, sans-serif; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid #1a56db; outline-offset: -1px; }
+  table { border-collapse: collapse; width: 100%; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
 
 const TEAM = ["Ben Strugo","Marc Padrosa","Diana Mihaylova","Gagan Samra","Rob Shannon","Gregg Turner","Dor Golan","Aharon Navon"];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const VERTICALS = ["PSP","Travel","Treasury","Gaming","AdTech","Marketplaces","HR","AP","Aviation","Other"];
+const STATUSES = ["Going","TBD","Not Going"];
 
-const INITIAL_CONFERENCES = [
+const INITIAL = [
   {id:1,name:"ICE Barcelona",location:"Barcelona",quarter:1,month:"Jan",vertical:"Gaming",status:"Going",attendees:["Ben Strugo","Gagan Samra","Diana Mihaylova"],participation:"Delegate",start:"19-Jan-2026",end:"21-Jan-2026",size:null,score:4,notes:""},
-  {id:2,name:"FITUR",location:"Madrid",quarter:1,month:"Jan",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Gagan Samra"],participation:"Exhibitor, Sponsor",start:"21-Jan-2026",end:"25-Jan-2026",size:null,score:5,notes:"Contact: Silvia Bueno silvia.bueno@ifema.es"},
+  {id:2,name:"FITUR",location:"Madrid",quarter:1,month:"Jan",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Gagan Samra"],participation:"Exhibitor, Sponsor",start:"21-Jan-2026",end:"25-Jan-2026",size:null,score:5,notes:"Contact: silvia.bueno@ifema.es"},
   {id:3,name:"IFX Dubai",location:"Dubai",quarter:1,month:"Feb",vertical:"PSP",status:"TBD",attendees:["Diana Mihaylova","Marc Padrosa","Gagan Samra"],participation:"Delegate",start:"10-Feb-2026",end:"",size:null,score:8,notes:""},
   {id:4,name:"Fintech Week Dubai",location:"Dubai",quarter:1,month:"Feb",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"16-Feb-2026",end:"",size:null,score:7,notes:""},
   {id:5,name:"Fintech Week Amsterdam",location:"Amsterdam",quarter:1,month:"Feb",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"26-Feb-2026",end:"",size:null,score:7,notes:""},
   {id:6,name:"Airline & Travel Payments Summit B2B",location:"London",quarter:1,month:"Feb",vertical:"Travel",status:"TBD",attendees:["Gregg Turner"],participation:"Delegate",start:"24-Feb-2026",end:"25-Feb-2026",size:null,score:7,notes:""},
   {id:7,name:"Stockholm Fintech Week",location:"Stockholm",quarter:1,month:"Mar",vertical:"PSP",status:"TBD",attendees:["Gagan Samra"],participation:"Delegate",start:"18-Mar-2026",end:"",size:null,score:8,notes:"Merchant Acquirer, Money Mover focus"},
   {id:8,name:"ITB Berlin",location:"Berlin",quarter:1,month:"Mar",vertical:"Travel",status:"Going",attendees:["Marc Padrosa"],participation:"Sponsor, Exhibitor",start:"3-Mar-2026",end:"5-Mar-2026",size:null,score:6,notes:""},
-  {id:9,name:"MPE Berlin",location:"Berlin",quarter:1,month:"Mar",vertical:"PSP",status:"Going",attendees:["Ben Strugo","Diana Mihaylova"],participation:"",start:"17-Mar-2026",end:"19-Mar-2026",size:1400,score:9,notes:"1400 Attendees"},
+  {id:9,name:"MPE Berlin",location:"Berlin",quarter:1,month:"Mar",vertical:"PSP",status:"Going",attendees:["Ben Strugo","Diana Mihaylova"],participation:"Exhibitor",start:"17-Mar-2026",end:"19-Mar-2026",size:1400,score:9,notes:"1400 Attendees"},
   {id:10,name:"Pay360",location:"London",quarter:1,month:"Mar",vertical:"PSP",status:"TBD",attendees:["Ben Strugo","Diana Mihaylova"],participation:"Delegate",start:"25-Mar-2026",end:"26-Mar-2026",size:2000,score:9,notes:"2000 Attendees"},
   {id:11,name:"Fintech Meetup Las Vegas",location:"Las Vegas",quarter:1,month:"Mar",vertical:"PSP",status:"Going",attendees:["Rob Shannon"],participation:"Delegate",start:"30-Mar-2026",end:"",size:null,score:8,notes:""},
   {id:12,name:"UATP - Airline Distribution",location:"Barcelona",quarter:1,month:"Mar",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Gregg Turner"],participation:"Delegate",start:"10-Mar-2026",end:"12-Mar-2026",size:null,score:6,notes:"Ticket purchased"},
   {id:13,name:"Transact",location:"Las Vegas",quarter:2,month:"Apr",vertical:"PSP",status:"Going",attendees:["Rob Shannon"],participation:"Delegate",start:"",end:"",size:3000,score:9,notes:"3000 Attendees"},
   {id:14,name:"Money 20/20 Asia",location:"Bangkok",quarter:2,month:"Apr",vertical:"PSP",status:"Going",attendees:["Ben Strugo","Diana Mihaylova"],participation:"Delegate",start:"",end:"",size:3000,score:9,notes:"3000 Attendees"},
-  {id:15,name:"Juniper Summit",location:"Mallorca",quarter:2,month:"Apr",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Gagan Samra"],participation:"Speaker, Sponsor",start:"15-Apr-2026",end:"16-Apr-2026",size:null,score:6,notes:"Contact: juniper@ejuniper.com"},
+  {id:15,name:"Juniper Summit",location:"Mallorca",quarter:2,month:"Apr",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Gagan Samra"],participation:"Speaker, Sponsor",start:"15-Apr-2026",end:"16-Apr-2026",size:null,score:6,notes:"juniper@ejuniper.com"},
   {id:16,name:"MRC Barcelona",location:"Barcelona",quarter:2,month:"Apr",vertical:"PSP",status:"TBD",attendees:["Ben Strugo"],participation:"Delegate",start:"",end:"",size:null,score:8,notes:"Merchant Risk Council"},
   {id:17,name:"Smarter Faster Payments (NACHA)",location:"New Orleans",quarter:2,month:"Apr",vertical:"PSP",status:"TBD",attendees:["Rob Shannon"],participation:"Delegate",start:"",end:"",size:2000,score:8,notes:"2000 Attendees"},
   {id:18,name:"Mexico Finance & Fintech Summit",location:"Mexico City",quarter:2,month:"Apr",vertical:"PSP",status:"TBD",attendees:["Rob Shannon"],participation:"Delegate",start:"",end:"",size:null,score:7,notes:""},
   {id:19,name:"ATM Dubai",location:"Dubai",quarter:2,month:"May",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Gagan Samra"],participation:"Delegate",start:"4-May-2026",end:"7-May-2026",size:null,score:7,notes:""},
-  {id:20,name:"Dubai Fintech Summit",location:"Dubai",quarter:2,month:"May",vertical:"PSP",status:"Going",attendees:["Marc Padrosa"],participation:"",start:"11-May-2026",end:"12-May-2026",size:null,score:8,notes:""},
-  {id:21,name:"Seamless Middle East",location:"Dubai",quarter:2,month:"May",vertical:"PSP",status:"Going",attendees:["Gagan Samra"],participation:"",start:"",end:"",size:25000,score:9,notes:"25000 Attendees"},
+  {id:20,name:"Dubai Fintech Summit",location:"Dubai",quarter:2,month:"May",vertical:"PSP",status:"Going",attendees:["Marc Padrosa"],participation:"Delegate",start:"11-May-2026",end:"12-May-2026",size:null,score:8,notes:""},
+  {id:21,name:"Seamless Middle East",location:"Dubai",quarter:2,month:"May",vertical:"PSP",status:"Going",attendees:["Gagan Samra"],participation:"Delegate",start:"",end:"",size:25000,score:9,notes:"25,000 Attendees"},
   {id:22,name:"ATPS Mega Event",location:"Dublin",quarter:2,month:"May",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Gregg Turner"],participation:"Delegate",start:"19-May-2026",end:"20-May-2026",size:null,score:7,notes:""},
   {id:23,name:"Fintech Week NYC",location:"NYC",quarter:2,month:"May",vertical:"PSP",status:"TBD",attendees:["Rob Shannon"],participation:"Delegate",start:"",end:"",size:null,score:7,notes:""},
-  {id:24,name:"Money 20/20 Europe",location:"Amsterdam",quarter:2,month:"Jun",vertical:"PSP",status:"Going",attendees:["Marc Padrosa","Ben Strugo","Diana Mihaylova","Gagan Samra"],participation:"",start:"",end:"",size:8500,score:10,notes:"8500 Attendees - FLAGSHIP"},
-  {id:25,name:"IFX Expo International",location:"TBD",quarter:2,month:"Jun",vertical:"PSP",status:"Going",attendees:["Marc Padrosa"],participation:"Delegate",start:"",end:"",size:null,score:9,notes:"FX core audience"},
-  {id:26,name:"Phocuswright Europe",location:"Barcelona",quarter:2,month:"Jun",vertical:"Travel",status:"Going",attendees:["Marc Padrosa"],participation:"",start:"",end:"",size:null,score:6,notes:""},
+  {id:24,name:"Money 20/20 Europe",location:"Amsterdam",quarter:2,month:"Jun",vertical:"PSP",status:"Going",attendees:["Marc Padrosa","Ben Strugo","Diana Mihaylova","Gagan Samra"],participation:"Exhibitor",start:"",end:"",size:8500,score:10,notes:"FLAGSHIP — book booth now"},
+  {id:25,name:"IFX Expo International",location:"TBD",quarter:2,month:"Jun",vertical:"PSP",status:"Going",attendees:["Marc Padrosa"],participation:"Delegate",start:"",end:"",size:null,score:9,notes:"Core FX audience"},
+  {id:26,name:"Phocuswright Europe",location:"Barcelona",quarter:2,month:"Jun",vertical:"Travel",status:"Going",attendees:["Marc Padrosa"],participation:"Delegate",start:"",end:"",size:null,score:6,notes:""},
   {id:27,name:"Con-X by TravelgateX",location:"Mallorca",quarter:2,month:"Jun",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Aharon Navon"],participation:"Sponsor",start:"2-Jun-2026",end:"",size:null,score:6,notes:""},
-  {id:28,name:"TravelTech Show",location:"London",quarter:2,month:"Jun",vertical:"Travel",status:"Going",attendees:["Dor Golan"],participation:"",start:"",end:"",size:null,score:5,notes:"Contact: nsayeed@traveltechnologyeurope.com"},
-  {id:29,name:"GBTA Convention",location:"Denver",quarter:3,month:"Jul",vertical:"Travel",status:"TBD",attendees:[],participation:"",start:"",end:"",size:null,score:6,notes:"Corporate travel FX"},
-  {id:30,name:"SKIFT Global Forum",location:"New York",quarter:3,month:"Sep",vertical:"Travel",status:"Going",attendees:["Marc Padrosa"],participation:"",start:"",end:"",size:null,score:6,notes:""},
+  {id:28,name:"TravelTech Show",location:"London",quarter:2,month:"Jun",vertical:"Travel",status:"Going",attendees:["Dor Golan"],participation:"Delegate",start:"",end:"",size:null,score:5,notes:"nsayeed@traveltechnologyeurope.com"},
+  {id:29,name:"GBTA Convention",location:"Denver",quarter:3,month:"Jul",vertical:"Travel",status:"TBD",attendees:[],participation:"",start:"",end:"",size:null,score:6,notes:"Corporate travel FX audience"},
+  {id:30,name:"SKIFT Global Forum",location:"New York",quarter:3,month:"Sep",vertical:"Travel",status:"Going",attendees:["Marc Padrosa"],participation:"Delegate",start:"",end:"",size:null,score:6,notes:""},
   {id:31,name:"Forex Expo Dubai",location:"Dubai",quarter:3,month:"Sep",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"",end:"",size:null,score:9,notes:"Core FX audience"},
   {id:32,name:"Payments Leaders Summit Q3",location:"Amsterdam",quarter:3,month:"Sep",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"",end:"",size:null,score:8,notes:""},
   {id:33,name:"Asia Business Show",location:"Singapore",quarter:3,month:"Sep",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"",end:"",size:null,score:7,notes:"M-DAQ people go every year"},
-  {id:34,name:"Ecommerce Expo",location:"London",quarter:3,month:"Sep",vertical:"Marketplaces",status:"Going",attendees:["Diana Mihaylova"],participation:"",start:"",end:"",size:null,score:4,notes:""},
-  {id:35,name:"Sibos",location:"Frankfurt",quarter:3,month:"Oct",vertical:"PSP",status:"Going",attendees:["Ben Strugo"],participation:"",start:"",end:"",size:9000,score:10,notes:"9000 Attendees - cross-border banking"},
-  {id:36,name:"Money 20/20 USA",location:"Las Vegas",quarter:4,month:"Oct",vertical:"PSP",status:"Going",attendees:["Ben Strugo","Diana Mihaylova"],participation:"",start:"",end:"",size:10000,score:10,notes:"FLAGSHIP North America"},
-  {id:37,name:"EuroFinance",location:"Budapest",quarter:4,month:"Oct",vertical:"Treasury",status:"Going",attendees:["Dor Golan","Diana Mihaylova"],participation:"",start:"",end:"",size:null,score:9,notes:"Treasury/FX audience"},
-  {id:38,name:"Payments Leaders Summit Q4",location:"London",quarter:4,month:"Oct",vertical:"PSP",status:"Going",attendees:["Diana Mihaylova","Aharon Navon"],participation:"",start:"",end:"",size:null,score:9,notes:""},
-  {id:39,name:"Fintech Week London Q4",location:"London",quarter:4,month:"Oct",vertical:"PSP",status:"Going",attendees:["Diana Mihaylova"],participation:"",start:"",end:"",size:null,score:7,notes:""},
-  {id:40,name:"ITB Asia",location:"Singapore",quarter:4,month:"Oct",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Aharon Navon"],participation:"",start:"",end:"",size:null,score:6,notes:""},
-  {id:41,name:"Singapore FinTech Festival",location:"Singapore",quarter:4,month:"Nov",vertical:"PSP",status:"Going",attendees:["Ben Strugo"],participation:"",start:"",end:"",size:null,score:9,notes:"M-DAQ is going"},
-  {id:42,name:"MoneyLive Europe",location:"Amsterdam",quarter:4,month:"Nov",vertical:"PSP",status:"Going",attendees:["Ben Strugo"],participation:"",start:"",end:"",size:1500,score:8,notes:"1500 Attendees"},
-  {id:43,name:"WTM London",location:"London",quarter:4,month:"Nov",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Diana Mihaylova"],participation:"",start:"",end:"",size:null,score:6,notes:"Contact: justin.berman@reedexpo.co.uk"},
-  {id:44,name:"Phocuswright US",location:"San Diego",quarter:4,month:"Nov",vertical:"Travel",status:"Going",attendees:["Marc Padrosa"],participation:"",start:"",end:"",size:null,score:6,notes:""},
-  {id:45,name:"AFP Conference",location:"Las Vegas",quarter:4,month:"Nov",vertical:"Treasury",status:"Going",attendees:[],participation:"",start:"8-Nov-2026",end:"",size:null,score:7,notes:""},
-  {id:46,name:"Future Travel Summit",location:"Barcelona",quarter:4,month:"Nov",vertical:"Travel",status:"Going",attendees:["Marc Padrosa"],participation:"",start:"",end:"",size:null,score:5,notes:""},
+  {id:34,name:"Ecommerce Expo",location:"London",quarter:3,month:"Sep",vertical:"Marketplaces",status:"Going",attendees:["Diana Mihaylova"],participation:"Delegate",start:"",end:"",size:null,score:4,notes:""},
+  {id:35,name:"Sibos",location:"Frankfurt",quarter:3,month:"Oct",vertical:"PSP",status:"Going",attendees:["Ben Strugo"],participation:"Delegate",start:"",end:"",size:9000,score:10,notes:"9000 Attendees — cross-border banking core"},
+  {id:36,name:"Money 20/20 USA",location:"Las Vegas",quarter:4,month:"Oct",vertical:"PSP",status:"Going",attendees:["Ben Strugo","Diana Mihaylova"],participation:"Exhibitor",start:"",end:"",size:10000,score:10,notes:"FLAGSHIP North America"},
+  {id:37,name:"EuroFinance",location:"Budapest",quarter:4,month:"Oct",vertical:"Treasury",status:"Going",attendees:["Dor Golan","Diana Mihaylova"],participation:"Delegate",start:"",end:"",size:null,score:9,notes:"Treasury & FX audience"},
+  {id:38,name:"Payments Leaders Summit Q4",location:"London",quarter:4,month:"Oct",vertical:"PSP",status:"Going",attendees:["Diana Mihaylova","Aharon Navon"],participation:"Delegate",start:"",end:"",size:null,score:9,notes:""},
+  {id:39,name:"Fintech Week London Q4",location:"London",quarter:4,month:"Oct",vertical:"PSP",status:"Going",attendees:["Diana Mihaylova"],participation:"Delegate",start:"",end:"",size:null,score:7,notes:""},
+  {id:40,name:"ITB Asia",location:"Singapore",quarter:4,month:"Oct",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Aharon Navon"],participation:"Delegate",start:"",end:"",size:null,score:6,notes:""},
+  {id:41,name:"Singapore FinTech Festival",location:"Singapore",quarter:4,month:"Nov",vertical:"PSP",status:"Going",attendees:["Ben Strugo"],participation:"Delegate",start:"",end:"",size:null,score:9,notes:"M-DAQ is going — good intel opportunity"},
+  {id:42,name:"MoneyLive Europe",location:"Amsterdam",quarter:4,month:"Nov",vertical:"PSP",status:"Going",attendees:["Ben Strugo"],participation:"Delegate",start:"",end:"",size:1500,score:8,notes:"1500 senior PSP attendees"},
+  {id:43,name:"WTM London",location:"London",quarter:4,month:"Nov",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Diana Mihaylova"],participation:"Delegate",start:"",end:"",size:null,score:6,notes:"justin.berman@reedexpo.co.uk"},
+  {id:44,name:"Phocuswright US",location:"San Diego",quarter:4,month:"Nov",vertical:"Travel",status:"Going",attendees:["Marc Padrosa"],participation:"Delegate",start:"",end:"",size:null,score:6,notes:""},
+  {id:45,name:"AFP Conference",location:"Las Vegas",quarter:4,month:"Nov",vertical:"Treasury",status:"Going",attendees:[],participation:"Delegate",start:"8-Nov-2026",end:"",size:null,score:7,notes:""},
+  {id:46,name:"Future Travel Summit",location:"Barcelona",quarter:4,month:"Nov",vertical:"Travel",status:"Going",attendees:["Marc Padrosa"],participation:"Delegate",start:"",end:"",size:null,score:5,notes:""},
   {id:47,name:"Fintech Nerdcon",location:"Miami",quarter:4,month:"Dec",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"",end:"",size:null,score:6,notes:""},
 ];
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const VERTICALS = ["PSP","Travel","Treasury","Gaming","AdTech","Marketplaces","HR","AP","Aviation"];
-const STATUSES = ["Going","TBD","Not Going"];
-
-const scoreColor = (s) => {
-  if (s >= 9) return "#1a56db";
-  if (s >= 7) return "#057a55";
-  if (s >= 5) return "#c27803";
-  return "#9ca3af";
+const sc = s => s>=9?"#1a56db":s>=7?"#057a55":s>=5?"#c27803":"#9ca3af";
+const tierOf = s => s>=9?1:s>=7?2:s>=5?3:4;
+const tierLabel = {1:"Must-attend",2:"High value",3:"Selective",4:"Monitor"};
+const tierColor = {1:"#1a56db",2:"#057a55",3:"#c27803",4:"#9ca3af"};
+const statusSt = {
+  "Going":     {bg:"#f0fdf4",color:"#166534",border:"#bbf7d0"},
+  "TBD":       {bg:"#fffbeb",color:"#92400e",border:"#fde68a"},
+  "Not Going": {bg:"#f9fafb",color:"#6b7280",border:"#e5e7eb"},
 };
 
-const statusStyle = {
-  Going: {bg:"#f0fdf4",color:"#166534",border:"#bbf7d0"},
-  TBD:   {bg:"#fffbeb",color:"#92400e",border:"#fde68a"},
-  "Not Going":{bg:"#f9fafb",color:"#6b7280",border:"#e5e7eb"},
-};
+const STORAGE_KEY = "grain_conf_v3";
 
-const tierOf = (s) => s >= 9 ? 1 : s >= 7 ? 2 : s >= 5 ? 3 : 4;
+function load() {
+  try { const d = localStorage.getItem(STORAGE_KEY); return d ? JSON.parse(d) : INITIAL; } catch(e) { return INITIAL; }
+}
+function save(data) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+}
 
-export default function GrainConferenceDashboard() {
-  const [conferences, setConferences] = useState(INITIAL_CONFERENCES);
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [editingId, setEditingId] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [filterQ, setFilterQ] = useState("all");
-  const [filterV, setFilterV] = useState("all");
-  const [filterS, setFilterS] = useState("all");
-  const [searchQ, setSearchQ] = useState("");
-  const [aiResults, setAiResults] = useState([]);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiMonth, setAiMonth] = useState("");
-  const [aiError, setAiError] = useState("");
-  const [editForm, setEditForm] = useState(null);
-  const [newForm, setNewForm] = useState({name:"",location:"",quarter:1,month:"Jan",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"",end:"",size:"",score:5,notes:""});
-  const [savedMsg, setSavedMsg] = useState("");
+const inp = {width:"100%",padding:"8px 10px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:13,color:"#111827",background:"#fff"};
+const sel = {...inp};
+const btn = (extra={}) => ({padding:"8px 16px",borderRadius:8,border:"none",background:"#111827",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",...extra});
 
-  // Persist to storage
-  useEffect(() => {
-    const save = async () => {
-      try { await window.storage.set("grain_conferences_v2", JSON.stringify(conferences)); } catch(e){}
-    };
-    save();
-  }, [conferences]);
+function Modal({title, onClose, children}) {
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:580,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.18)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <h2 style={{fontSize:16,fontWeight:700,color:"#111827"}}>{title}</h2>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9ca3af",lineHeight:1}}>×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const r = await window.storage.get("grain_conferences_v2");
-        if (r && r.value) setConferences(JSON.parse(r.value));
-      } catch(e){}
-    };
-    load();
-  }, []);
-
-  const currentMonth = MONTHS[new Date().getMonth()];
-
-  const filtered = conferences.filter(c => {
-    if (filterQ !== "all" && String(c.quarter) !== filterQ) return false;
-    if (filterV !== "all" && c.vertical !== filterV) return false;
-    if (filterS !== "all" && c.status !== filterS) return false;
-    if (searchQ && !c.name.toLowerCase().includes(searchQ.toLowerCase()) && !c.location.toLowerCase().includes(searchQ.toLowerCase())) return false;
-    return true;
-  });
-
-  const going = conferences.filter(c => c.status === "Going");
-  const tier1 = conferences.filter(c => tierOf(c.score) === 1);
-  const pspCount = conferences.filter(c => c.vertical === "PSP").length;
-
-  const startEdit = (c) => { setEditingId(c.id); setEditForm({...c, attendees:[...c.attendees]}); };
-  const saveEdit = () => {
-    setConferences(prev => prev.map(c => c.id === editingId ? {...editForm, size: editForm.size === "" ? null : Number(editForm.size), score: Number(editForm.score)} : c));
-    setEditingId(null); setEditForm(null);
-    setSavedMsg("Saved!"); setTimeout(()=>setSavedMsg(""),2000);
-  };
-  const deleteConf = (id) => { if(confirm("Delete this conference?")) setConferences(prev => prev.filter(c => c.id !== id)); };
-  const addConf = () => {
-    const next = {...newForm, id: Date.now(), size: newForm.size === "" ? null : Number(newForm.size), score: Number(newForm.score), attendees:[...newForm.attendees]};
-    setConferences(prev => [...prev, next]);
-    setShowAddModal(false);
-    setNewForm({name:"",location:"",quarter:1,month:"Jan",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"",end:"",size:"",score:5,notes:""});
-    setSavedMsg("Conference added!"); setTimeout(()=>setSavedMsg(""),2000);
-  };
-
-  const toggleAttendee = (form, setForm, name) => {
-    setForm(f => ({...f, attendees: f.attendees.includes(name) ? f.attendees.filter(a=>a!==name) : [...f.attendees, name]}));
-  };
-
-  // AI conference discovery
-  const findConferences = async () => {
-    if (!aiMonth) { setAiError("Please select a month first."); return; }
-    setAiLoading(true); setAiResults([]); setAiError("");
-    const existingNames = conferences.map(c=>c.name).join(", ");
-    const prompt = `You are a conference research specialist for Grain, a B2B fintech company that helps PSPs (payment service providers), cross-border payment companies, and companies with FX exposure manage their currency risk and payments.
-
-Find 6-8 relevant conferences or industry events happening in ${aiMonth} 2026 that Grain should consider attending to meet PSPs, cross-border payment companies, or companies with significant FX exposure.
-
-These conferences are already on Grain's radar (don't repeat them): ${existingNames}
-
-For each conference, provide:
-- Name
-- Location (city, country)
-- Approximate dates in ${aiMonth} 2026 if known
-- Why it's relevant for Grain (focus on PSP attendees, FX exposure, cross-border payments)
-- Estimated attendee size if known
-- ICP fit score out of 10 (10 = perfect fit: PSP/FX/cross-border core audience)
-- Recommended action (Attend as delegate / Submit speaker proposal / Exhibit / Monitor)
-
-Respond ONLY with a JSON array, no markdown, no preamble. Format:
-[{"name":"...","location":"...","dates":"...","why":"...","size":"...","score":8,"action":"..."}]`;
-
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})
-      });
-      const data = await res.json();
-      const text = data.content?.filter(b=>b.type==="text").map(b=>b.text).join("") || "";
-      const clean = text.replace(/```json|```/g,"").trim();
-      const parsed = JSON.parse(clean);
-      setAiResults(parsed);
-    } catch(e) {
-      setAiError("Couldn't fetch suggestions. Try again.");
-    }
-    setAiLoading(false);
-  };
-
-  const addFromAI = (r) => {
-    const monthIdx = MONTHS.indexOf(r.dates?.split(" ")[0]) > -1 ? r.dates?.split(" ")[0] : aiMonth;
-    const c = {id:Date.now(),name:r.name,location:r.location,quarter:Math.ceil((MONTHS.indexOf(monthIdx)+1)/3)||1,month:monthIdx||aiMonth,vertical:"PSP",status:"TBD",attendees:[],participation:"Delegate",start:r.dates||"",end:"",size:r.size?parseInt(r.size.replace(/[^0-9]/g,""))||null:null,score:Number(r.score)||7,notes:r.why||""};
-    setConferences(prev=>[...prev,c]);
-    setSavedMsg(`${r.name} added!`); setTimeout(()=>setSavedMsg(""),2000);
-  };
-
-  const upcomingThisMonth = conferences.filter(c => c.month === currentMonth && c.status !== "Not Going");
-
-  const FormField = ({label, children}) => (
+function Field({label, children}) {
+  return (
     <div style={{marginBottom:12}}>
-      <label style={{display:"block",fontSize:11,fontWeight:600,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>{label}</label>
+      <label style={{display:"block",fontSize:11,fontWeight:700,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>{label}</label>
       {children}
     </div>
   );
+}
 
-  const inputStyle = {width:"100%",padding:"8px 10px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:13,color:"#111827",background:"#fff",outline:"none",fontFamily:"inherit"};
-  const selectStyle = {...inputStyle};
-
-  const renderForm = (form, setForm, onSave, onCancel, title) => (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:560,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.15)"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <h2 style={{fontSize:17,fontWeight:700,color:"#111827",margin:0}}>{title}</h2>
-          <button onClick={onCancel} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#9ca3af"}}>×</button>
-        </div>
-        <FormField label="Conference Name"><input style={inputStyle} value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Money 20/20 Europe"/></FormField>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <FormField label="Location"><input style={inputStyle} value={form.location} onChange={e=>setForm(f=>({...f,location:e.target.value}))} placeholder="City, Country"/></FormField>
-          <FormField label="Vertical">
-            <select style={selectStyle} value={form.vertical} onChange={e=>setForm(f=>({...f,vertical:e.target.value}))}>
-              {VERTICALS.map(v=><option key={v}>{v}</option>)}
-            </select>
-          </FormField>
-          <FormField label="Month">
-            <select style={selectStyle} value={form.month} onChange={e=>setForm(f=>({...f,month:e.target.value}))}>
-              {MONTHS.map(m=><option key={m}>{m}</option>)}
-            </select>
-          </FormField>
-          <FormField label="Quarter">
-            <select style={selectStyle} value={form.quarter} onChange={e=>setForm(f=>({...f,quarter:Number(e.target.value)}))}>
-              {[1,2,3,4].map(q=><option key={q} value={q}>Q{q}</option>)}
-            </select>
-          </FormField>
-          <FormField label="Start Date"><input style={inputStyle} value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))} placeholder="e.g. 10-Jun-2026"/></FormField>
-          <FormField label="End Date"><input style={inputStyle} value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))} placeholder="e.g. 12-Jun-2026"/></FormField>
-          <FormField label="Status">
-            <select style={selectStyle} value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
-              {STATUSES.map(s=><option key={s}>{s}</option>)}
-            </select>
-          </FormField>
-          <FormField label="Participation"><input style={inputStyle} value={form.participation} onChange={e=>setForm(f=>({...f,participation:e.target.value}))} placeholder="Delegate / Exhibitor / Speaker"/></FormField>
-          <FormField label="Est. Attendees"><input style={inputStyle} type="number" value={form.size||""} onChange={e=>setForm(f=>({...f,size:e.target.value}))} placeholder="e.g. 3000"/></FormField>
-          <FormField label="ICP Score (1–10)">
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <input style={{...inputStyle,width:70}} type="number" min={1} max={10} value={form.score} onChange={e=>setForm(f=>({...f,score:Number(e.target.value)}))}/>
-              <div style={{flex:1,height:6,borderRadius:3,background:"#f3f4f6",overflow:"hidden"}}><div style={{height:"100%",width:`${form.score*10}%`,background:scoreColor(form.score),borderRadius:3,transition:"width 0.2s"}}/></div>
+function ConferenceForm({form, setForm, onSave, onCancel, title}) {
+  const toggle = name => setForm(f => ({...f, attendees: f.attendees.includes(name) ? f.attendees.filter(a=>a!==name) : [...f.attendees,name]}));
+  return (
+    <Modal title={title} onClose={onCancel}>
+      <Field label="Conference name"><input style={inp} value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Money 20/20 Europe"/></Field>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        <Field label="Location"><input style={inp} value={form.location} onChange={e=>setForm(f=>({...f,location:e.target.value}))} placeholder="City, Country"/></Field>
+        <Field label="Vertical">
+          <select style={sel} value={form.vertical} onChange={e=>setForm(f=>({...f,vertical:e.target.value}))}>
+            {VERTICALS.map(v=><option key={v}>{v}</option>)}
+          </select>
+        </Field>
+        <Field label="Month">
+          <select style={sel} value={form.month} onChange={e=>setForm(f=>({...f,month:e.target.value}))}>
+            {MONTHS.map(m=><option key={m}>{m}</option>)}
+          </select>
+        </Field>
+        <Field label="Quarter">
+          <select style={sel} value={form.quarter} onChange={e=>setForm(f=>({...f,quarter:Number(e.target.value)}))}>
+            {[1,2,3,4].map(q=><option key={q} value={q}>Q{q}</option>)}
+          </select>
+        </Field>
+        <Field label="Start date"><input style={inp} value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))} placeholder="e.g. 10-Jun-2026"/></Field>
+        <Field label="End date"><input style={inp} value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))} placeholder="e.g. 12-Jun-2026"/></Field>
+        <Field label="Status">
+          <select style={sel} value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
+            {STATUSES.map(s=><option key={s}>{s}</option>)}
+          </select>
+        </Field>
+        <Field label="Participation"><input style={inp} value={form.participation} onChange={e=>setForm(f=>({...f,participation:e.target.value}))} placeholder="Delegate / Exhibitor / Speaker"/></Field>
+        <Field label="Est. attendees"><input style={inp} type="number" value={form.size||""} onChange={e=>setForm(f=>({...f,size:e.target.value}))} placeholder="e.g. 3000"/></Field>
+        <Field label="ICP score (1–10)">
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <input style={{...inp,width:64}} type="number" min={1} max={10} value={form.score} onChange={e=>setForm(f=>({...f,score:Number(e.target.value)}))}/>
+            <div style={{flex:1,height:6,borderRadius:3,background:"#f3f4f6",overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${Math.min(form.score,10)*10}%`,background:sc(form.score),borderRadius:3,transition:"width 0.2s"}}/>
             </div>
-          </FormField>
-        </div>
-        <FormField label="Attendees">
-          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-            {TEAM.map(name=>(
-              <button key={name} onClick={()=>toggleAttendee(form,setForm,name)} style={{padding:"4px 10px",borderRadius:20,fontSize:12,border:`1.5px solid ${form.attendees.includes(name)?"#1a56db":"#e5e7eb"}`,background:form.attendees.includes(name)?"#eff6ff":"#fff",color:form.attendees.includes(name)?"#1a56db":"#6b7280",cursor:"pointer",fontFamily:"inherit"}}>
-                {name.split(" ")[0]}
-              </button>
-            ))}
           </div>
-        </FormField>
-        <FormField label="Notes"><textarea style={{...inputStyle,height:60,resize:"vertical"}} value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Contacts, special notes..."/></FormField>
-        <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:8}}>
-          <button onClick={onCancel} style={{padding:"9px 18px",borderRadius:8,border:"1px solid #e5e7eb",background:"#fff",fontSize:13,cursor:"pointer",color:"#374151",fontFamily:"inherit"}}>Cancel</button>
-          <button onClick={onSave} style={{padding:"9px 18px",borderRadius:8,border:"none",background:"#111827",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Save</button>
-        </div>
+        </Field>
       </div>
-    </div>
+      <Field label="Attendees">
+        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:2}}>
+          {TEAM.map(name => {
+            const on = form.attendees.includes(name);
+            return <button key={name} onClick={()=>toggle(name)} style={{padding:"4px 12px",borderRadius:20,fontSize:12,border:`1.5px solid ${on?"#1a56db":"#e5e7eb"}`,background:on?"#eff6ff":"#fff",color:on?"#1a56db":"#6b7280",cursor:"pointer",fontWeight:on?600:400}}>{name.split(" ")[0]}</button>;
+          })}
+        </div>
+      </Field>
+      <Field label="Notes"><textarea style={{...inp,height:64,resize:"vertical"}} value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Contacts, reminders, strategy notes..."/></Field>
+      <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+        <button onClick={onCancel} style={{...btn({background:"#fff",color:"#374151",border:"1px solid #e5e7eb"})}}> Cancel</button>
+        <button onClick={onSave} style={btn()}>Save changes</button>
+      </div>
+    </Modal>
   );
+}
+
+function Dashboard({conferences, onEdit}) {
+  const going = conferences.filter(c=>c.status==="Going");
+  const t1 = conferences.filter(c=>tierOf(c.score)===1);
+  const psp = conferences.filter(c=>c.vertical==="PSP");
+  const now = MONTHS[new Date().getMonth()];
+  const upcoming = conferences.filter(c=>c.month===now && c.status!=="Not Going");
 
   return (
-    <div style={{fontFamily:"'DM Sans', system-ui, sans-serif",minHeight:"100vh",background:"#f8f9fa",color:"#111827"}}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-
-      {/* Header */}
-      <div style={{background:"#111827",padding:"0 28px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <div style={{display:"flex",alignItems:"center",gap:24}}>
-          <div style={{padding:"16px 0"}}>
-            <div style={{fontSize:16,fontWeight:700,color:"#fff",letterSpacing:"-0.01em"}}>Grain</div>
-            <div style={{fontSize:11,color:"#6b7280",marginTop:1}}>Conference Intelligence</div>
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
+        {[
+          {label:"Total tracked",value:conferences.length,sub:"conferences this year"},
+          {label:"Confirmed going",value:going.length,sub:`${Math.round(going.length/conferences.length*100)}% of pipeline`},
+          {label:"PSP / payments",value:psp.length,sub:"core ICP vertical"},
+          {label:"Tier 1 events",value:t1.length,sub:"score 9–10, must-attend"},
+        ].map(m=>(
+          <div key={m.label} style={{background:"#fff",borderRadius:12,padding:"16px 18px",border:"1px solid #f0f0f0"}}>
+            <div style={{fontSize:11,color:"#9ca3af",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>{m.label}</div>
+            <div style={{fontSize:30,fontWeight:700,color:"#111827",lineHeight:1}}>{m.value}</div>
+            <div style={{fontSize:12,color:"#9ca3af",marginTop:4}}>{m.sub}</div>
           </div>
-          <div style={{display:"flex",gap:2}}>
-            {[["dashboard","Dashboard"],["events","All Events"],["planner","Monthly Planner"],["discover","Discover"]].map(([id,label])=>(
-              <button key={id} onClick={()=>setActiveTab(id)} style={{padding:"8px 14px",borderRadius:8,border:"none",background:activeTab===id?"rgba(255,255,255,0.12)":"transparent",color:activeTab===id?"#fff":"#9ca3af",fontSize:13,fontWeight:activeTab===id?600:400,cursor:"pointer",fontFamily:"inherit"}}>
-                {label}
-              </button>
+        ))}
+      </div>
+
+      {upcoming.length > 0 && (
+        <div style={{background:"#eff6ff",borderRadius:12,padding:"14px 18px",marginBottom:24,border:"1px solid #bfdbfe"}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#1e40af",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}}>This month ({now} 2026)</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+            {upcoming.map(c=>(
+              <div key={c.id} onClick={()=>onEdit(c)} style={{background:"#fff",border:"1px solid #bfdbfe",borderRadius:8,padding:"8px 12px",cursor:"pointer"}}>
+                <span style={{fontSize:13,fontWeight:600,color:"#111827"}}>{c.name}</span>
+                <span style={{fontSize:12,color:"#6b7280",marginLeft:6}}>{c.location}</span>
+                <span style={{display:"inline-block",marginLeft:8,background:statusSt[c.status].bg,color:statusSt[c.status].color,border:`1px solid ${statusSt[c.status].border}`,borderRadius:4,padding:"1px 7px",fontSize:11}}>{c.status}</span>
+              </div>
             ))}
           </div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          {savedMsg && <span style={{fontSize:12,color:"#34d399",fontWeight:500}}>{savedMsg}</span>}
-          <button onClick={()=>setShowAddModal(true)} style={{padding:"8px 16px",borderRadius:8,border:"none",background:"#1a56db",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Add event</button>
-        </div>
-      </div>
+      )}
 
-      <div style={{padding:"24px 28px",maxWidth:1300,margin:"0 auto"}}>
-
-        {/* DASHBOARD TAB */}
-        {activeTab === "dashboard" && (
-          <div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
-              {[
-                {label:"Total conferences",value:conferences.length,sub:"tracked this year"},
-                {label:"Confirmed going",value:going.length,sub:`${Math.round(going.length/conferences.length*100)}% of total`},
-                {label:"PSP / payments",value:pspCount,sub:"core ICP vertical"},
-                {label:"Tier 1 must-attend",value:tier1.length,sub:"score 9–10"},
-              ].map(m=>(
-                <div key={m.label} style={{background:"#fff",borderRadius:12,padding:"16px 18px",border:"1px solid #f3f4f6"}}>
-                  <div style={{fontSize:11,color:"#9ca3af",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:6}}>{m.label}</div>
-                  <div style={{fontSize:28,fontWeight:700,color:"#111827",lineHeight:1}}>{m.value}</div>
-                  <div style={{fontSize:12,color:"#9ca3af",marginTop:4}}>{m.sub}</div>
+      {[1,2,3,4].map(tier=>{
+        const tcs = conferences.filter(c=>tierOf(c.score)===tier && c.status!=="Not Going");
+        if(!tcs.length) return null;
+        return (
+          <div key={tier} style={{marginBottom:22}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:tierColor[tier]}}/>
+              <span style={{fontSize:13,fontWeight:700,color:"#111827"}}>Tier {tier} — {tierLabel[tier]}</span>
+              <span style={{fontSize:12,color:"#9ca3af"}}>{tcs.length} events</span>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:8}}>
+              {tcs.map(c=>(
+                <div key={c.id} onClick={()=>onEdit(c)} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:"1px solid #f0f0f0",borderTop:`3px solid ${tierColor[tier]}`,cursor:"pointer",transition:"box-shadow 0.15s"}}
+                  onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)"}
+                  onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
+                  <div style={{fontSize:13,fontWeight:600,color:"#111827",marginBottom:2,lineHeight:1.3}}>{c.name}</div>
+                  <div style={{fontSize:11,color:"#9ca3af",marginBottom:8}}>{c.location} · {c.month} · Q{c.quarter}</div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:11,background:statusSt[c.status]?.bg,color:statusSt[c.status]?.color,border:`1px solid ${statusSt[c.status]?.border}`,borderRadius:4,padding:"2px 7px"}}>{c.status}</span>
+                    <span style={{fontSize:12,fontWeight:700,color:tierColor[tier]}}>{c.score}/10</span>
+                  </div>
+                  {c.attendees.length>0 && <div style={{fontSize:11,color:"#9ca3af",marginTop:6}}>{c.attendees.map(a=>a.split(" ")[0]).join(", ")}</div>}
                 </div>
               ))}
             </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
-            {/* Upcoming this month */}
-            {upcomingThisMonth.length > 0 && (
-              <div style={{background:"#eff6ff",borderRadius:12,padding:"16px 20px",marginBottom:24,border:"1px solid #bfdbfe"}}>
-                <div style={{fontSize:12,fontWeight:700,color:"#1e40af",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:10}}>Happening this month ({currentMonth})</div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                  {upcomingThisMonth.map(c=>(
-                    <div key={c.id} style={{background:"#fff",border:"1px solid #bfdbfe",borderRadius:8,padding:"8px 12px",fontSize:13}}>
-                      <span style={{fontWeight:600,color:"#111827"}}>{c.name}</span>
-                      <span style={{color:"#6b7280",marginLeft:6}}>{c.location}</span>
-                      <span style={{...statusStyle[c.status],background:statusStyle[c.status].bg,color:statusStyle[c.status].color,border:`1px solid ${statusStyle[c.status].border}`,borderRadius:4,padding:"1px 6px",fontSize:11,marginLeft:8}}>{c.status}</span>
+function Events({conferences, onEdit, onDelete, onAdd}) {
+  const [q, setQ] = useState("all");
+  const [v, setV] = useState("all");
+  const [s, setS] = useState("all");
+  const [search, setSearch] = useState("");
+
+  const filtered = conferences.filter(c => {
+    if(q!=="all" && String(c.quarter)!==q) return false;
+    if(v!=="all" && c.vertical!==v) return false;
+    if(s!=="all" && c.status!==s) return false;
+    if(search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.location.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  return (
+    <div>
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{...inp,width:180}}/>
+        <select style={{...sel,width:"auto"}} value={q} onChange={e=>setQ(e.target.value)}>
+          <option value="all">All quarters</option>
+          {[1,2,3,4].map(n=><option key={n} value={n}>Q{n}</option>)}
+        </select>
+        <select style={{...sel,width:"auto"}} value={v} onChange={e=>setV(e.target.value)}>
+          <option value="all">All verticals</option>
+          {VERTICALS.map(x=><option key={x}>{x}</option>)}
+        </select>
+        <select style={{...sel,width:"auto"}} value={s} onChange={e=>setS(e.target.value)}>
+          <option value="all">All statuses</option>
+          {STATUSES.map(x=><option key={x}>{x}</option>)}
+        </select>
+        <span style={{fontSize:12,color:"#9ca3af",flex:1}}>{filtered.length} events</span>
+        <button onClick={onAdd} style={btn()}>+ Add event</button>
+      </div>
+      <div style={{background:"#fff",borderRadius:12,border:"1px solid #f0f0f0",overflow:"auto"}}>
+        <table>
+          <thead>
+            <tr style={{background:"#f9fafb",borderBottom:"1px solid #f0f0f0"}}>
+              {["Conference","Location","Month","Vertical","Status","Attendees","Score",""].map(h=>(
+                <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(c=>(
+              <tr key={c.id} style={{borderBottom:"1px solid #f9fafb"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#fafafa"}
+                onMouseLeave={e=>e.currentTarget.style.background=""}>
+                <td style={{padding:"10px 14px",fontWeight:600,color:"#111827",whiteSpace:"nowrap"}}>{c.name}</td>
+                <td style={{padding:"10px 14px",color:"#6b7280",whiteSpace:"nowrap"}}>{c.location}</td>
+                <td style={{padding:"10px 14px",color:"#6b7280",whiteSpace:"nowrap"}}>{c.month} Q{c.quarter}</td>
+                <td style={{padding:"10px 14px",color:"#6b7280"}}>{c.vertical}</td>
+                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
+                  <span style={{background:statusSt[c.status]?.bg,color:statusSt[c.status]?.color,border:`1px solid ${statusSt[c.status]?.border}`,borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:500}}>{c.status}</span>
+                </td>
+                <td style={{padding:"10px 14px",color:"#6b7280",fontSize:12,whiteSpace:"nowrap"}}>{c.attendees.length?c.attendees.map(a=>a.split(" ")[0]).join(", "):"—"}</td>
+                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{width:44,height:4,borderRadius:2,background:"#f3f4f6",overflow:"hidden"}}>
+                      <div style={{width:`${c.score*10}%`,height:"100%",background:sc(c.score),borderRadius:2}}/>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Tier breakdown */}
-            {[1,2,3,4].map(tier => {
-              const tConfs = conferences.filter(c=>tierOf(c.score)===tier && c.status!=="Not Going");
-              if(!tConfs.length) return null;
-              const tColors = {1:"#1a56db",2:"#057a55",3:"#c27803",4:"#9ca3af"};
-              const tLabels = {1:"Must-attend",2:"High value",3:"Selective",4:"Monitor"};
-              return (
-                <div key={tier} style={{marginBottom:20}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                    <span style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:tColors[tier]}}/>
-                    <span style={{fontSize:13,fontWeight:700,color:"#111827"}}>Tier {tier} — {tLabels[tier]}</span>
-                    <span style={{fontSize:12,color:"#9ca3af"}}>{tConfs.length} events</span>
+                    <span style={{fontSize:11,fontWeight:700,color:sc(c.score)}}>{c.score}</span>
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
-                    {tConfs.map(c=>(
-                      <div key={c.id} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:"1px solid #f3f4f6",borderTop:`3px solid ${tColors[tier]}`,cursor:"pointer"}} onClick={()=>startEdit(c)}>
-                        <div style={{fontSize:13,fontWeight:600,color:"#111827",marginBottom:2}}>{c.name}</div>
-                        <div style={{fontSize:11,color:"#9ca3af",marginBottom:6}}>{c.location} · {c.month} · Q{c.quarter}</div>
-                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                          <span style={{fontSize:11,background:statusStyle[c.status]?.bg||"#f9fafb",color:statusStyle[c.status]?.color||"#6b7280",padding:"2px 7px",borderRadius:4,border:`1px solid ${statusStyle[c.status]?.border||"#e5e7eb"}`}}>{c.status}</span>
-                          <span style={{fontSize:11,fontWeight:700,color:tColors[tier]}}>{c.score}/10</span>
-                        </div>
-                      </div>
-                    ))}
+                </td>
+                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
+                  <div style={{display:"flex",gap:4}}>
+                    <button onClick={()=>onEdit(c)} style={{padding:"4px 10px",border:"1px solid #e5e7eb",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#374151"}}>Edit</button>
+                    <button onClick={()=>onDelete(c.id)} style={{padding:"4px 8px",border:"1px solid #fee2e2",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#ef4444"}}>×</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function Planner({conferences, onEdit}) {
+  const now = MONTHS[new Date().getMonth()];
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
+      {MONTHS.map(month=>{
+        const mcs = conferences.filter(c=>c.month===month && c.status!=="Not Going");
+        const isNow = month===now;
+        return (
+          <div key={month} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${isNow?"#1a56db":"#f0f0f0"}`,overflow:"hidden"}}>
+            <div style={{padding:"11px 16px",background:isNow?"#eff6ff":"#f9fafb",borderBottom:"1px solid #f0f0f0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:14,fontWeight:700,color:isNow?"#1a56db":"#111827"}}>{month} 2026</span>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                {isNow && <span style={{fontSize:10,background:"#1a56db",color:"#fff",padding:"2px 7px",borderRadius:4,fontWeight:700}}>NOW</span>}
+                <span style={{fontSize:11,color:"#9ca3af"}}>{mcs.length} events</span>
+              </div>
+            </div>
+            <div style={{padding:"10px 14px"}}>
+              {mcs.length===0 && <div style={{fontSize:12,color:"#d1d5db",padding:"6px 0"}}>No events — use Discover to find some</div>}
+              {mcs.map(c=>(
+                <div key={c.id} onClick={()=>onEdit(c)} style={{marginBottom:8,paddingBottom:8,borderBottom:"1px solid #f9fafb",cursor:"pointer"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"#111827",lineHeight:1.3,flex:1,marginRight:6}}>{c.name}</div>
+                    <span style={{fontSize:11,fontWeight:700,color:sc(c.score),flexShrink:0}}>{c.score}/10</span>
+                  </div>
+                  <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{c.location} · {c.vertical}</div>
+                  {c.attendees.length>0 && <div style={{fontSize:11,color:"#6b7280",marginTop:2}}>{c.attendees.map(a=>a.split(" ")[0]).join(", ")}</div>}
+                  <span style={{display:"inline-block",marginTop:4,background:statusSt[c.status]?.bg,color:statusSt[c.status]?.color,border:`1px solid ${statusSt[c.status]?.border}`,borderRadius:4,padding:"1px 7px",fontSize:10}}>{c.status}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Discover({conferences, onAdd}) {
+  const [month, setMonth] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState([]);
+  const [error, setError] = useState("");
+
+  const find = async () => {
+    if(!month) { setError("Please select a month first."); return; }
+    setLoading(true); setResults([]); setError("");
+    const existing = conferences.map(c=>c.name).join(", ");
+    const prompt = `You are a conference research specialist for Grain, a B2B fintech that helps PSPs (payment service providers), cross-border payment companies, and businesses with FX exposure manage currency risk.
+
+Find 6-8 relevant conferences happening in ${month} 2026 for Grain to meet PSPs, cross-border payment companies, or companies with significant FX exposure.
+
+Already tracked (do not repeat): ${existing}
+
+For each, provide: name, location, approximate dates, why it's relevant for Grain (PSP/FX/cross-border angle), estimated attendee size, ICP fit score out of 10, recommended action.
+
+Respond ONLY with a valid JSON array, no markdown, no explanation:
+[{"name":"...","location":"...","dates":"...","why":"...","size":"...","score":8,"action":"..."}]`;
+
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,messages:[{role:"user",content:prompt}]})
+      });
+      const data = await res.json();
+      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+      const clean = text.replace(/```json|```/g,"").trim();
+      setResults(JSON.parse(clean));
+    } catch(e) {
+      setError("Something went wrong. Try again in a moment.");
+    }
+    setLoading(false);
+  };
+
+  const addIt = r => {
+    const mo = MONTHS.find(m=>r.dates?.includes(m))||month;
+    onAdd({
+      id:Date.now(),
+      name:r.name,location:r.location,
+      quarter:Math.ceil((MONTHS.indexOf(mo)+1)/3)||2,
+      month:mo,vertical:"PSP",status:"TBD",
+      attendees:[],participation:"Delegate",
+      start:r.dates||"",end:"",
+      size:parseInt((r.size||"").replace(/[^0-9]/g,""))||null,
+      score:Number(r.score)||7,
+      notes:r.why||""
+    });
+  };
+
+  return (
+    <div>
+      <div style={{background:"#fff",borderRadius:12,border:"1px solid #f0f0f0",padding:"22px 24px",marginBottom:20}}>
+        <div style={{fontSize:15,fontWeight:700,color:"#111827",marginBottom:4}}>AI Conference Discovery</div>
+        <div style={{fontSize:13,color:"#6b7280",marginBottom:18,lineHeight:1.6}}>Pick a month and Claude will find PSP, cross-border, and FX-focused events you're not tracking yet. One click adds them to your dashboard.</div>
+        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+          <select value={month} onChange={e=>setMonth(e.target.value)} style={{...sel,width:"auto"}}>
+            <option value="">Select a month...</option>
+            {MONTHS.map(m=><option key={m} value={m}>{m} 2026</option>)}
+          </select>
+          <button onClick={find} disabled={loading} style={{...btn(),opacity:loading?0.6:1,cursor:loading?"not-allowed":"pointer"}}>
+            {loading?"Searching...":"Find conferences →"}
+          </button>
+        </div>
+        {error && <div style={{fontSize:12,color:"#ef4444",marginTop:10}}>{error}</div>}
+      </div>
+
+      {loading && (
+        <div style={{background:"#fff",borderRadius:12,border:"1px solid #f0f0f0",padding:40,textAlign:"center",color:"#9ca3af",fontSize:13}}>
+          Searching for PSP, FX & cross-border events in {month} 2026...
+        </div>
+      )}
+
+      {results.length>0 && (
+        <>
+          <div style={{fontSize:13,fontWeight:600,color:"#111827",marginBottom:12}}>Found {results.length} conferences for {month} 2026</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:12}}>
+            {results.map((r,i)=>{
+              const already = conferences.some(c=>c.name.toLowerCase()===r.name.toLowerCase());
+              return (
+                <div key={i} style={{background:"#fff",borderRadius:12,border:"1px solid #f0f0f0",padding:"16px 18px",borderTop:`3px solid ${sc(Number(r.score)||7)}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+                    <div style={{fontSize:14,fontWeight:700,color:"#111827",lineHeight:1.3,flex:1,marginRight:8}}>{r.name}</div>
+                    <span style={{fontSize:12,fontWeight:700,color:sc(Number(r.score)||7),flexShrink:0}}>{r.score}/10</span>
+                  </div>
+                  <div style={{fontSize:12,color:"#6b7280",marginBottom:6}}>{r.location} · {r.dates}</div>
+                  <div style={{fontSize:12,color:"#374151",lineHeight:1.55,marginBottom:12}}>{r.why}</div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:11,background:"#f3f4f6",color:"#6b7280",padding:"2px 8px",borderRadius:4}}>{r.action}</span>
+                    {already
+                      ? <span style={{fontSize:11,color:"#9ca3af"}}>Already tracked</span>
+                      : <button onClick={()=>addIt(r)} style={{...btn({fontSize:11,padding:"5px 12px"})}}>+ Add to tracker</button>
+                    }
                   </div>
                 </div>
               );
             })}
           </div>
-        )}
-
-        {/* ALL EVENTS TAB */}
-        {activeTab === "events" && (
-          <div>
-            <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
-              <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Search conferences..." style={{padding:"8px 12px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:13,outline:"none",background:"#fff",fontFamily:"inherit",minWidth:200}}/>
-              {[["filterQ","Quarter",["all","1","2","3","4"]],["filterV","Vertical",["all",...VERTICALS]],["filterS","Status",["all",...STATUSES]]].map(([key,ph,opts])=>(
-                <select key={key} value={key==="filterQ"?filterQ:key==="filterV"?filterV:filterS} onChange={e=>{if(key==="filterQ")setFilterQ(e.target.value);else if(key==="filterV")setFilterV(e.target.value);else setFilterS(e.target.value);}} style={{padding:"8px 10px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:13,background:"#fff",color:"#374151",outline:"none",fontFamily:"inherit"}}>
-                  {opts.map(o=><option key={o} value={o}>{o==="all"?ph:o==="1"?"Q1":o==="2"?"Q2":o==="3"?"Q3":o==="4"?"Q4":o}</option>)}
-                </select>
-              ))}
-              <span style={{fontSize:12,color:"#9ca3af",marginLeft:4}}>{filtered.length} results</span>
-            </div>
-            <div style={{background:"#fff",borderRadius:12,border:"1px solid #f3f4f6",overflow:"hidden"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
-                <thead>
-                  <tr style={{background:"#f9fafb",borderBottom:"1px solid #f3f4f6"}}>
-                    {["Conference","Location","Month","Vertical","Status","Attendees","Score",""].map(h=>(
-                      <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.05em"}}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(c=>(
-                    <tr key={c.id} style={{borderBottom:"1px solid #f9fafb"}} onMouseEnter={e=>e.currentTarget.style.background="#fafafa"} onMouseLeave={e=>e.currentTarget.style.background=""}>
-                      <td style={{padding:"10px 14px",fontWeight:600,color:"#111827"}}>{c.name}</td>
-                      <td style={{padding:"10px 14px",color:"#6b7280"}}>{c.location}</td>
-                      <td style={{padding:"10px 14px",color:"#6b7280"}}>{c.month} Q{c.quarter}</td>
-                      <td style={{padding:"10px 14px",color:"#6b7280"}}>{c.vertical}</td>
-                      <td style={{padding:"10px 14px"}}>
-                        <span style={{background:statusStyle[c.status]?.bg,color:statusStyle[c.status]?.color,border:`1px solid ${statusStyle[c.status]?.border}`,borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:500}}>{c.status}</span>
-                      </td>
-                      <td style={{padding:"10px 14px",color:"#6b7280",fontSize:12}}>{c.attendees.length ? c.attendees.map(a=>a.split(" ")[0]).join(", ") : "—"}</td>
-                      <td style={{padding:"10px 14px"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:6}}>
-                          <div style={{width:48,height:4,borderRadius:2,background:"#f3f4f6",overflow:"hidden"}}><div style={{width:`${c.score*10}%`,height:"100%",background:scoreColor(c.score),borderRadius:2}}/></div>
-                          <span style={{fontSize:11,fontWeight:700,color:scoreColor(c.score)}}>{c.score}</span>
-                        </div>
-                      </td>
-                      <td style={{padding:"10px 14px"}}>
-                        <div style={{display:"flex",gap:4}}>
-                          <button onClick={()=>startEdit(c)} style={{padding:"4px 10px",border:"1px solid #e5e7eb",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#374151",fontFamily:"inherit"}}>Edit</button>
-                          <button onClick={()=>deleteConf(c.id)} style={{padding:"4px 8px",border:"1px solid #fee2e2",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#ef4444",fontFamily:"inherit"}}>×</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* MONTHLY PLANNER TAB */}
-        {activeTab === "planner" && (
-          <div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
-              {MONTHS.map(month => {
-                const mConfs = conferences.filter(c=>c.month===month && c.status!=="Not Going");
-                const isNow = month === currentMonth;
-                return (
-                  <div key={month} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${isNow?"#1a56db":"#f3f4f6"}`,overflow:"hidden"}}>
-                    <div style={{padding:"12px 16px",background:isNow?"#eff6ff":"#f9fafb",borderBottom:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <span style={{fontSize:14,fontWeight:700,color:isNow?"#1a56db":"#111827"}}>{month} 2026</span>
-                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                        {isNow && <span style={{fontSize:10,background:"#1a56db",color:"#fff",padding:"2px 6px",borderRadius:4,fontWeight:700}}>NOW</span>}
-                        <span style={{fontSize:11,color:"#9ca3af"}}>{mConfs.length} events</span>
-                      </div>
-                    </div>
-                    <div style={{padding:"10px 14px"}}>
-                      {mConfs.length === 0 && <div style={{fontSize:12,color:"#d1d5db",padding:"8px 0"}}>No events this month</div>}
-                      {mConfs.map(c=>(
-                        <div key={c.id} style={{marginBottom:8,paddingBottom:8,borderBottom:"1px solid #f9fafb",cursor:"pointer"}} onClick={()=>startEdit(c)}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                            <div style={{fontSize:13,fontWeight:600,color:"#111827",lineHeight:1.3}}>{c.name}</div>
-                            <span style={{fontSize:10,fontWeight:700,color:scoreColor(c.score),marginLeft:8,flexShrink:0}}>{c.score}/10</span>
-                          </div>
-                          <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{c.location} · {c.vertical}</div>
-                          {c.attendees.length > 0 && <div style={{fontSize:11,color:"#6b7280",marginTop:2}}>{c.attendees.map(a=>a.split(" ")[0]).join(", ")}</div>}
-                          <span style={{display:"inline-block",marginTop:4,background:statusStyle[c.status]?.bg,color:statusStyle[c.status]?.color,border:`1px solid ${statusStyle[c.status]?.border}`,borderRadius:4,padding:"1px 6px",fontSize:10}}>{c.status}</span>
-                        </div>
-                      ))}
-                      {mConfs.length === 0 && (
-                        <div style={{fontSize:11,color:"#9ca3af",lineHeight:1.6}}>
-                          {month==="Aug" && "→ Prep for Sibos (Oct)\n→ Register for Q4 events"}
-                          {month==="Jul" && "→ Mid-year pipeline review\n→ Plan Q3/Q4 strategy"}
-                          Use the Discover tab to find events for this month.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* DISCOVER TAB */}
-        {activeTab === "discover" && (
-          <div>
-            <div style={{background:"#fff",borderRadius:12,border:"1px solid #f3f4f6",padding:"20px 24px",marginBottom:20}}>
-              <div style={{fontSize:15,fontWeight:700,color:"#111827",marginBottom:4}}>AI Conference Discovery</div>
-              <div style={{fontSize:13,color:"#6b7280",marginBottom:16}}>Select a month and find PSP, cross-border, and FX-focused conferences Grain should consider. Results are powered by Claude and added directly to your tracker.</div>
-              <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                <select value={aiMonth} onChange={e=>setAiMonth(e.target.value)} style={{padding:"9px 12px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:13,background:"#fff",color:"#374151",outline:"none",fontFamily:"inherit"}}>
-                  <option value="">Select a month...</option>
-                  {MONTHS.map(m=><option key={m} value={m}>{m} 2026</option>)}
-                </select>
-                <button onClick={findConferences} disabled={aiLoading} style={{padding:"9px 20px",borderRadius:8,border:"none",background:aiLoading?"#9ca3af":"#111827",color:"#fff",fontSize:13,fontWeight:600,cursor:aiLoading?"not-allowed":"pointer",fontFamily:"inherit"}}>
-                  {aiLoading ? "Searching..." : "Find conferences →"}
-                </button>
-              </div>
-              {aiError && <div style={{fontSize:12,color:"#ef4444",marginTop:8}}>{aiError}</div>}
-            </div>
-
-            {aiLoading && (
-              <div style={{background:"#fff",borderRadius:12,border:"1px solid #f3f4f6",padding:40,textAlign:"center"}}>
-                <div style={{fontSize:13,color:"#9ca3af"}}>Searching for PSP, FX & cross-border conferences in {aiMonth} 2026...</div>
-              </div>
-            )}
-
-            {aiResults.length > 0 && (
-              <div>
-                <div style={{fontSize:13,fontWeight:600,color:"#111827",marginBottom:12}}>Found {aiResults.length} conferences for {aiMonth} 2026</div>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:12}}>
-                  {aiResults.map((r,i)=>{
-                    const alreadyAdded = conferences.some(c=>c.name.toLowerCase()===r.name.toLowerCase());
-                    return (
-                      <div key={i} style={{background:"#fff",borderRadius:12,border:"1px solid #f3f4f6",padding:"16px 18px",borderTop:`3px solid ${scoreColor(Number(r.score)||7)}`}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-                          <div style={{fontSize:14,fontWeight:700,color:"#111827",lineHeight:1.3}}>{r.name}</div>
-                          <span style={{fontSize:12,fontWeight:700,color:scoreColor(Number(r.score)||7),marginLeft:8,flexShrink:0}}>{r.score}/10</span>
-                        </div>
-                        <div style={{fontSize:12,color:"#6b7280",marginBottom:4}}>{r.location} · {r.dates}</div>
-                        <div style={{fontSize:12,color:"#374151",lineHeight:1.5,marginBottom:10}}>{r.why}</div>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                          <span style={{fontSize:11,background:"#f3f4f6",color:"#6b7280",padding:"2px 8px",borderRadius:4}}>{r.action}</span>
-                          {alreadyAdded
-                            ? <span style={{fontSize:11,color:"#9ca3af"}}>Already in tracker</span>
-                            : <button onClick={()=>addFromAI(r)} style={{padding:"5px 12px",border:"none",borderRadius:6,background:"#1a56db",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Add to tracker</button>
-                          }
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Edit modal */}
-      {editingId && editForm && renderForm(editForm, setEditForm, saveEdit, ()=>{setEditingId(null);setEditForm(null);}, `Edit — ${editForm.name}`)}
-
-      {/* Add modal */}
-      {showAddModal && renderForm(newForm, setNewForm, addConf, ()=>setShowAddModal(false), "Add new conference")}
+        </>
+      )}
     </div>
   );
 }
+
+function App() {
+  const [conferences, setConferences] = useState(load);
+  const [tab, setTab] = useState("dashboard");
+  const [editConf, setEditConf] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [toast, setToast] = useState("");
+  const blankForm = {name:"",location:"",quarter:1,month:"Jan",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"",end:"",size:"",score:7,notes:""};
+  const [newForm, setNewForm] = useState(blankForm);
+  const [editForm, setEditForm] = useState(null);
+
+  useEffect(()=>save(conferences),[conferences]);
+
+  const showToast = msg => { setToast(msg); setTimeout(()=>setToast(""),2200); };
+
+  const startEdit = c => { setEditConf(c); setEditForm({...c,attendees:[...c.attendees]}); };
+  const saveEdit = () => {
+    setConferences(p=>p.map(c=>c.id===editConf.id?{...editForm,size:editForm.size===""?null:Number(editForm.size),score:Number(editForm.score)}:c));
+    setEditConf(null); setEditForm(null); showToast("Saved!");
+  };
+  const addConf = () => {
+    setConferences(p=>[...p,{...newForm,id:Date.now(),size:newForm.size===""?null:Number(newForm.size),score:Number(newForm.score),attendees:[...newForm.attendees]}]);
+    setShowAdd(false); setNewForm(blankForm); showToast("Conference added!");
+  };
+  const deleteConf = id => { if(window.confirm("Delete this conference?")){ setConferences(p=>p.filter(c=>c.id!==id)); showToast("Deleted."); }};
+  const addFromDiscover = c => { setConferences(p=>[...p,c]); showToast(`${c.name} added!`); };
+
+  const TABS = [["dashboard","Dashboard"],["events","All Events"],["planner","Monthly Planner"],["discover","Discover"]];
+
+  return (
+    <div style={{minHeight:"100vh",background:"#f8f9fa"}}>
+      {/* Nav */}
+      <div style={{background:"#111827",padding:"0 28px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
+        <div style={{display:"flex",alignItems:"center",gap:28}}>
+          <div style={{padding:"14px 0"}}>
+            <div style={{fontSize:16,fontWeight:700,color:"#fff",letterSpacing:"-0.01em"}}>Grain</div>
+            <div style={{fontSize:10,color:"#6b7280",marginTop:1,letterSpacing:"0.04em",textTransform:"uppercase"}}>Conference Intelligence</div>
+          </div>
+          <div style={{display:"flex",gap:2}}>
+            {TABS.map(([id,label])=>(
+              <button key={id} onClick={()=>setTab(id)} style={{padding:"8px 14px",borderRadius:8,border:"none",background:tab===id?"rgba(255,255,255,0.12)":"transparent",color:tab===id?"#fff":"#9ca3af",fontSize:13,fontWeight:tab===id?600:400,cursor:"pointer"}}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          {toast && <span style={{fontSize:12,color:"#34d399",fontWeight:600}}>{toast}</span>}
+          <button onClick={()=>setShowAdd(true)} style={{...btn({background:"#1a56db",padding:"7px 16px"})}}>+ Add event</button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div style={{padding:"24px 28px",maxWidth:1320,margin:"0 auto"}}>
+        {tab==="dashboard" && <Dashboard conferences={conferences} onEdit={startEdit}/>}
+        {tab==="events" && <Events conferences={conferences} onEdit={startEdit} onDelete={deleteConf} onAdd={()=>setShowAdd(true)}/>}
+        {tab==="planner" && <Planner conferences={conferences} onEdit={startEdit}/>}
+        {tab==="discover" && <Discover conferences={conferences} onAdd={addFromDiscover}/>}
+      </div>
+
+      {/* Modals */}
+      {editConf && editForm && <ConferenceForm form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={()=>{setEditConf(null);setEditForm(null);}} title={`Edit — ${editConf.name}`}/>}
+      {showAdd && <ConferenceForm form={newForm} setForm={setNewForm} onSave={addConf} onCancel={()=>{setShowAdd(false);setNewForm(blankForm);}} title="Add new conference"/>}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+</script>
+</body>
+</html>
