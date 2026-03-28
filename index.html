@@ -17,9 +17,66 @@
   input, select, textarea, button { font-family: 'DM Sans', system-ui, sans-serif; }
   input:focus, select:focus, textarea:focus { outline: 2px solid #1a56db; outline-offset: -1px; }
   table { border-collapse: collapse; width: 100%; }
+
+  /* ── Mobile nav bottom bar ── */
+  .mob-nav { display: none; }
+  .desk-nav { display: flex; }
+  .desk-add-btn { display: block; }
+
   @media (max-width: 768px) {
-    .desktop-only { display: none !important; }
-    .mobile-pad { padding: 12px 14px !important; }
+    /* Bottom tab bar */
+    .mob-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: #111827; border-top: 1px solid rgba(255,255,255,0.08); z-index: 200; padding: 0; }
+    .mob-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 2px 10px; cursor: pointer; border: none; background: none; color: #6b7280; font-size: 10px; font-family: 'DM Sans', system-ui, sans-serif; gap: 3px; position: relative; }
+    .mob-nav-item.active { color: #fff; }
+    .mob-nav-icon { font-size: 18px; line-height: 1; }
+    .mob-nav-dot { position: absolute; top: 6px; right: calc(50% - 14px); width: 6px; height: 6px; border-radius: 50%; background: #f97316; }
+
+    /* Hide desktop nav tabs, show only logo */
+    .desk-nav { display: none; }
+    .desk-add-btn { display: none; }
+
+    /* Content padding accounts for bottom nav */
+    .page-content { padding: 14px 14px 80px !important; }
+
+    /* KPI grid: 2 cols on mobile */
+    .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+    /* Heatmap: scrollable on mobile */
+    .heatmap-grid { grid-template-columns: repeat(12, minmax(44px, 1fr)) !important; overflow-x: auto !important; }
+
+    /* Two-col grids become single col */
+    .two-col { grid-template-columns: 1fr !important; }
+
+    /* Cluster grid */
+    .cluster-grid { grid-template-columns: 1fr !important; }
+
+    /* Monthly planner: 1 col */
+    .month-grid { grid-template-columns: 1fr !important; }
+
+    /* Table: hide less important cols */
+    .td-hide-mob { display: none !important; }
+    .th-hide-mob { display: none !important; }
+
+    /* Form grids: single col */
+    .form-grid { grid-template-columns: 1fr !important; }
+
+    /* Conf mode conference cards */
+    .conf-pick-grid { grid-template-columns: 1fr !important; }
+
+    /* Discover grid */
+    .discover-grid { grid-template-columns: 1fr !important; }
+
+    /* Larger tap targets on mobile */
+    button { min-height: 36px; }
+
+    /* Lead cards on mobile */
+    .lead-actions { flex-wrap: wrap; }
+
+    /* Stats on mobile */
+    .stats-grid { grid-template-columns: repeat(2,1fr) !important; }
+
+    /* Toast position above bottom nav */
+    .toast-msg { bottom: 72px !important; top: auto !important; }
   }
 </style>
 </head>
@@ -130,7 +187,7 @@ function ConfForm({form,setForm,onSave,onCancel,title}){
   return (
     <Modal title={title} onClose={onCancel}>
       <F label="Name"><input style={IS} value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Conference name"/></F>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+      <div className="form-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
         <F label="Location"><input style={IS} value={form.location} onChange={e=>setForm(f=>({...f,location:e.target.value}))} placeholder="City, Country"/></F>
         <F label="Vertical"><select style={IS} value={form.vertical} onChange={e=>setForm(f=>({...f,vertical:e.target.value}))}>{VERTICALS.filter(v=>v!=="All").map(v=><option key={v}>{v}</option>)}</select></F>
         <F label="Month"><select style={IS} value={form.month} onChange={e=>setForm(f=>({...f,month:e.target.value}))}>{MONTHS.map(m=><option key={m}>{m}</option>)}</select></F>
@@ -186,7 +243,7 @@ function Dashboard({all,leads,onEdit,vert,setVert}){
       </div>
 
       {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:20}}>
+      <div className="kpi-grid" style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:20}}>
         {[
           {label:"Confirmed this year",value:going.length,sub:"Going status"},
           {label:"This month — "+now,value:thisM.length,sub:"conferences going"},
@@ -206,7 +263,7 @@ function Dashboard({all,leads,onEdit,vert,setVert}){
       <Card style={{padding:"16px 20px",marginBottom:18}}>
         <div style={{fontSize:13,fontWeight:700,color:"#111827",marginBottom:6}}>Coverage heatmap — 2026</div>
         <div style={{fontSize:12,color:"#6b7280",marginBottom:14}}>Blue = confirmed going · Amber = TBD · Darker = more events</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(12,1fr)",gap:6}}>
+        <div className="heatmap-grid" style={{display:"grid",gridTemplateColumns:"repeat(12,1fr)",gap:6}}>
           {heat.map(h=>{
             const int=(h.g+h.t)/maxH; const isN=h.month===now;
             const hasPast=MONTHS.indexOf(h.month)<MONTHS.indexOf(now);
@@ -224,7 +281,7 @@ function Dashboard({all,leads,onEdit,vert,setVert}){
         </div>
       </Card>
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:18}}>
+      <div className="two-col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:18}}>
         {/* This month */}
         <Card>
           <CardHead title={"Conferences this month"} sub={now+" 2026"} right={<span style={{fontSize:11,background:"#1a56db",color:"#fff",padding:"2px 8px",borderRadius:4,fontWeight:700}}>{thisM.length} events</span>}/>
@@ -273,7 +330,7 @@ function Dashboard({all,leads,onEdit,vert,setVert}){
         <Card style={{padding:"16px 20px",marginBottom:18}}>
           <div style={{fontSize:13,fontWeight:700,color:"#111827",marginBottom:3}}>Trip clusters</div>
           <div style={{fontSize:12,color:"#6b7280",marginBottom:14}}>Multiple confirmed events in the same city — one trip covers all of them</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:10}}>
+          <div className="cluster-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:10}}>
             {clusters.map((cl,i)=>(
               <div key={i} style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"12px 14px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -337,16 +394,16 @@ function Events({all,onEdit,onDelete,onAdd,vert,setVert}){
       </div>
       <Card style={{overflowX:"auto"}}>
         <table>
-          <thead><tr style={{background:"#f9fafb",borderBottom:"1px solid #f0f0f0"}}>{["Conference","Location","Month","Vertical","Status","Team","Score",""].map(h=><th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+          <thead><tr style={{background:"#f9fafb",borderBottom:"1px solid #f0f0f0"}}>{[["Conference",""],["Location","td-hide-mob"],["Month","td-hide-mob"],["Vertical","td-hide-mob"],["Status",""],["Team","td-hide-mob"],["Score",""],["",""]].map(([h,cls])=><th key={h} className={cls} style={{padding:"10px 14px",textAlign:"left",fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
           <tbody>
             {filtered.map(c=>(
               <tr key={c.id} style={{borderBottom:"1px solid #f9fafb"}} onMouseEnter={e=>e.currentTarget.style.background="#fafafa"} onMouseLeave={e=>e.currentTarget.style.background=""}>
                 <td style={{padding:"10px 14px",fontWeight:600,color:"#111827",whiteSpace:"nowrap"}}>{c.name}</td>
-                <td style={{padding:"10px 14px",color:"#6b7280",whiteSpace:"nowrap"}}>{c.location}</td>
-                <td style={{padding:"10px 14px",color:"#6b7280",whiteSpace:"nowrap"}}>{c.month} Q{c.quarter}</td>
-                <td style={{padding:"10px 14px",color:"#6b7280"}}>{c.vertical}</td>
+                <td className="td-hide-mob" style={{padding:"10px 14px",color:"#6b7280",whiteSpace:"nowrap"}}>{c.location}</td>
+                <td className="td-hide-mob" style={{padding:"10px 14px",color:"#6b7280",whiteSpace:"nowrap"}}>{c.month} Q{c.quarter}</td>
+                <td className="td-hide-mob" style={{padding:"10px 14px",color:"#6b7280"}}>{c.vertical}</td>
                 <td style={{padding:"10px 14px"}}><Badge status={c.status}/></td>
-                <td style={{padding:"10px 14px"}}><div style={{display:"flex",gap:2}}>{c.attendees.slice(0,4).map(a=><Avatar key={a} name={a} size={24}/>)}{c.attendees.length>4&&<span style={{fontSize:10,color:"#9ca3af",alignSelf:"center",marginLeft:2}}>+{c.attendees.length-4}</span>}</div></td>
+                <td className="td-hide-mob" style={{padding:"10px 14px"}}><div style={{display:"flex",gap:2}}>{c.attendees.slice(0,4).map(a=><Avatar key={a} name={a} size={24}/>)}{c.attendees.length>4&&<span style={{fontSize:10,color:"#9ca3af",alignSelf:"center",marginLeft:2}}>+{c.attendees.length-4}</span>}</div></td>
                 <td style={{padding:"10px 14px"}}><ScoreBar score={c.score}/></td>
                 <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><div style={{display:"flex",gap:4}}><button onClick={()=>onEdit(c)} style={{padding:"4px 10px",border:"1px solid #e5e7eb",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#374151"}}>Edit</button><button onClick={()=>onDelete(c.id)} style={{padding:"4px 8px",border:"1px solid #fee2e2",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#ef4444"}}>×</button></div></td>
               </tr>
@@ -368,7 +425,7 @@ function Planner({all,onEdit,vert,setVert}){
         <span style={{fontSize:12,color:"#9ca3af",marginRight:2}}>Vertical:</span>
         {VERTICALS.map(v=><Pill key={v} label={v} active={vert===v} onClick={()=>setVert(v)}/>)}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
+      <div className="month-grid" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
         {MONTHS.map(month=>{
           const mcs=confs.filter(c=>c.month===month&&c.status!=="Not Going"); const isN=month===now;
           return (
@@ -500,7 +557,7 @@ function ConferenceMode({all,leads,setLeads,toast2}){
       <div>
         <div style={{fontSize:15,fontWeight:700,color:"#111827",marginBottom:4}}>Conference Mode</div>
         <div style={{fontSize:13,color:"#6b7280",marginBottom:20}}>Select the conference you're at to start capturing leads. Works great on mobile.</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
+        <div className="conf-pick-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
           {going.map(c=>{
             const lCount=leads.filter(l=>l.confId===c.id).length;
             return (
@@ -539,7 +596,7 @@ function ConferenceMode({all,leads,setLeads,toast2}){
       </div>
 
       {/* Stats row */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:18}}>
+      <div className="stats-grid" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:18}}>
         {[
           {label:"Total leads",value:allConfLeads.length},
           {label:"Hot",value:allConfLeads.filter(l=>l.warmth==="Hot").length},
@@ -590,7 +647,7 @@ function ConferenceMode({all,leads,setLeads,toast2}){
                   {lead.notes&&<div style={{fontSize:12,color:"#374151",background:"#f9fafb",borderRadius:6,padding:"6px 10px",marginTop:4,border:"1px solid #f0f0f0"}}><span style={{fontWeight:600,color:"#9ca3af",fontSize:11}}>NOTES </span>{lead.notes}</div>}
                   {lead.followUp&&<div style={{fontSize:12,color:"#1a56db",background:"#eff6ff",borderRadius:6,padding:"6px 10px",marginTop:4,border:"1px solid #bfdbfe"}}><span style={{fontWeight:600,fontSize:11}}>FOLLOW-UP </span>{lead.followUp}</div>}
                 </div>
-                <div style={{display:"flex",gap:6,flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                <div className="lead-actions" style={{display:"flex",gap:6,flexShrink:0,justifyContent:"flex-end"}}>
                   <button onClick={()=>{setEditingLead(lead.id);setEditForm({...lead});}} style={{padding:"5px 10px",border:"1px solid #e5e7eb",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#374151"}}>Edit</button>
                   {!lead.syncedToHS&&<button onClick={()=>syncToHubSpot(lead)} disabled={syncing[lead.id]} style={BS({fontSize:11,padding:"5px 10px",background:"#f97316",opacity:syncing[lead.id]?0.6:1})}>{syncing[lead.id]?"...":"→ HS"}</button>}
                   <button onClick={()=>{if(window.confirm("Delete?"))setLeads(p=>p.filter(l=>l.id!==lead.id));}} style={{padding:"5px 8px",border:"1px solid #fee2e2",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#ef4444"}}>×</button>
@@ -604,7 +661,7 @@ function ConferenceMode({all,leads,setLeads,toast2}){
       {/* Capture lead modal */}
       {showLead&&(
         <Modal title="Capture lead" onClose={()=>setShowLead(false)}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div className="form-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <F label="First name"><input style={IS} value={leadForm.firstName} onChange={e=>setLeadForm(f=>({...f,firstName:e.target.value}))} placeholder="John"/></F>
             <F label="Last name"><input style={IS} value={leadForm.lastName} onChange={e=>setLeadForm(f=>({...f,lastName:e.target.value}))} placeholder="Smith"/></F>
             <F label="Company"><input style={IS} value={leadForm.company} onChange={e=>setLeadForm(f=>({...f,company:e.target.value}))} placeholder="Acme Payments Ltd"/></F>
@@ -634,7 +691,7 @@ function ConferenceMode({all,leads,setLeads,toast2}){
       {/* Edit lead modal */}
       {editingLead&&editForm&&(
         <Modal title="Edit lead" onClose={()=>{setEditingLead(null);setEditForm(null);}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div className="form-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <F label="First name"><input style={IS} value={editForm.firstName||""} onChange={e=>setEditForm(f=>({...f,firstName:e.target.value}))}/></F>
             <F label="Last name"><input style={IS} value={editForm.lastName||""} onChange={e=>setEditForm(f=>({...f,lastName:e.target.value}))}/></F>
             <F label="Company"><input style={IS} value={editForm.company||""} onChange={e=>setEditForm(f=>({...f,company:e.target.value}))}/></F>
@@ -796,7 +853,7 @@ function Discover({all,onAdd}){
       {results.length>0&&(
         <>
           <div style={{fontSize:13,fontWeight:600,color:"#111827",marginBottom:12}}>{results.length} conferences found for {month} 2026</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:12}}>
+          <div className="discover-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:12}}>
             {results.map((r,i)=>{
               const s=Number(r.score)||7; const already=all.some(c=>c.name.toLowerCase()===r.name.toLowerCase());
               return (
@@ -825,7 +882,7 @@ function Discover({all,onAdd}){
 function App(){
   const [all,setAll]=useState(()=>ld(SK,INITIAL));
   const [leads,setLeads]=useState(()=>ld(LK,[]));
-  const [tab,setTab]=useState("dashboard");
+  const [tab,setTab]=useState("confmode");
   const [vert,setVert]=useState("All");
   const [editC,setEditC]=useState(null); const [showAdd,setShowAdd]=useState(false);
   const [toast,setToast]=useState("");
@@ -841,35 +898,50 @@ function App(){
   const addC=()=>{setAll(p=>[...p,{...newF,id:Date.now(),size:newF.size===""?null:Number(newF.size),score:Number(newF.score),attendees:[...newF.attendees]}]);setShowAdd(false);setNewF(blank);toast2("Added!");};
   const delC=id=>{if(window.confirm("Delete?")){setAll(p=>p.filter(c=>c.id!==id));toast2("Deleted.");}};
 
-  const TABS=[["dashboard","Dashboard"],["events","All Events"],["planner","Monthly Planner"],["confmode","Conference Mode"],["leads","All Leads"],["discover","Discover"]];
-  const props={all,vert,setVert};
   const unsynced=leads.filter(l=>!l.syncedToHS).length;
+  const props={all,vert,setVert};
+
+  // Desktop tabs
+  const DTABS=[["dashboard","Dashboard"],["events","All Events"],["planner","Monthly Planner"],["confmode","Conference Mode"],["leads","All Leads"],["discover","Discover"]];
+
+  // Mobile bottom nav — 5 key items with icons
+  const MTABS=[
+    ["confmode","Field","📋"],
+    ["dashboard","Dashboard","📊"],
+    ["leads","Leads","👥"],
+    ["planner","Planner","📅"],
+    ["discover","Discover","🔍"],
+  ];
 
   return (
     <div style={{minHeight:"100vh",background:"#f4f5f7"}}>
+
+      {/* ── Desktop top nav ── */}
       <div style={{background:"#111827",padding:"0 24px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 4px rgba(0,0,0,0.3)"}}>
         <div style={{display:"flex",alignItems:"center",gap:24}}>
           <div style={{padding:"13px 0"}}>
             <div style={{fontSize:15,fontWeight:700,color:"#fff",letterSpacing:"-0.01em"}}>Grain</div>
             <div style={{fontSize:10,color:"#6b7280",marginTop:1,letterSpacing:"0.04em",textTransform:"uppercase"}}>Conference Intelligence</div>
           </div>
-          <div style={{display:"flex",gap:1,flexWrap:"wrap"}}>
-            {TABS.map(([id,label])=>(
+          <div className="desk-nav" style={{gap:1,flexWrap:"wrap"}}>
+            {DTABS.map(([id,label])=>(
               <button key={id} onClick={()=>setTab(id)} style={{padding:"7px 12px",borderRadius:7,border:"none",background:tab===id?"rgba(255,255,255,0.13)":"transparent",color:tab===id?"#fff":"#9ca3af",fontSize:12,fontWeight:tab===id?600:400,cursor:"pointer",position:"relative"}}>
                 {label}
                 {id==="leads"&&unsynced>0&&<span style={{position:"absolute",top:4,right:4,width:6,height:6,borderRadius:"50%",background:"#f97316"}}/>}
-                {id==="confmode"&&<span style={{marginLeft:4,fontSize:10,background:"#1a56db",color:"#fff",padding:"1px 5px",borderRadius:3,verticalAlign:"middle"}}>NEW</span>}
               </button>
             ))}
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          {toast&&<span style={{fontSize:12,color:"#34d399",fontWeight:600}}>{toast}</span>}
-          <button onClick={()=>setShowAdd(true)} style={BS({background:"#1a56db",padding:"6px 14px",fontSize:12})}>+ Add event</button>
+          <button className="desk-add-btn" onClick={()=>setShowAdd(true)} style={BS({background:"#1a56db",padding:"6px 14px",fontSize:12})}>+ Add event</button>
         </div>
       </div>
 
-      <div style={{padding:"22px 24px",maxWidth:1340,margin:"0 auto"}}>
+      {/* ── Toast ── */}
+      {toast&&<div className="toast-msg" style={{position:"fixed",top:64,left:"50%",transform:"translateX(-50%)",background:"#111827",color:"#34d399",padding:"10px 20px",borderRadius:8,fontSize:13,fontWeight:600,zIndex:500,boxShadow:"0 4px 16px rgba(0,0,0,0.2)",whiteSpace:"nowrap"}}>{toast}</div>}
+
+      {/* ── Page content ── */}
+      <div className="page-content" style={{padding:"22px 24px",maxWidth:1340,margin:"0 auto"}}>
         {tab==="dashboard"&&<Dashboard {...props} leads={leads} onEdit={startEdit}/>}
         {tab==="events"&&<Events {...props} onEdit={startEdit} onDelete={delC} onAdd={()=>setShowAdd(true)}/>}
         {tab==="planner"&&<Planner {...props} onEdit={startEdit}/>}
@@ -877,6 +949,17 @@ function App(){
         {tab==="leads"&&<AllLeads all={all} leads={leads} setLeads={setLeads} toast2={toast2}/>}
         {tab==="discover"&&<Discover all={all} onAdd={c=>{setAll(p=>[...p,c]);toast2(c.name+" added!");}}/>}
       </div>
+
+      {/* ── Mobile bottom nav ── */}
+      <nav className="mob-nav">
+        {MTABS.map(([id,label,icon])=>(
+          <button key={id} className={`mob-nav-item${tab===id?" active":""}`} onClick={()=>setTab(id)}>
+            <span className="mob-nav-icon">{icon}</span>
+            <span>{label}</span>
+            {id==="leads"&&unsynced>0&&<span className="mob-nav-dot"/>}
+          </button>
+        ))}
+      </nav>
 
       {editC&&editF&&<ConfForm form={editF} setForm={setEditF} onSave={saveEdit} onCancel={()=>{setEditC(null);setEditF(null);}} title={`Edit — ${editC.name}`}/>}
       {showAdd&&<ConfForm form={newF} setForm={setNewF} onSave={addC} onCancel={()=>{setShowAdd(false);setNewF(blank);}} title="Add new conference"/>}
