@@ -10,33 +10,43 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'DM Sans', system-ui, sans-serif; background: #f8f9fa; color: #111827; min-height: 100vh; }
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: #f1f1f1; }
+  body { font-family: 'DM Sans', system-ui, sans-serif; background: #f4f5f7; color: #111827; min-height: 100vh; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
   input, select, textarea, button { font-family: 'DM Sans', system-ui, sans-serif; }
   input:focus, select:focus, textarea:focus { outline: 2px solid #1a56db; outline-offset: -1px; }
   table { border-collapse: collapse; width: 100%; }
+  @media (max-width: 768px) {
+    .desktop-only { display: none !important; }
+    .mobile-pad { padding: 12px 14px !important; }
+  }
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useRef } = React;
+const { useState, useEffect, useMemo } = React;
+
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const ANTHROPIC_API_KEY = ""; // ← paste your key from console.anthropic.com
+const HUBSPOT_API_KEY   = ""; // ← paste your HubSpot private app token
 
 const TEAM = ["Ben Strugo","Marc Padrosa","Diana Mihaylova","Gagan Samra","Rob Shannon","Gregg Turner","Dor Golan","Aharon Navon"];
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const VERTICALS = ["PSP","Travel","Treasury","Gaming","AdTech","Marketplaces","HR","AP","Aviation","Other"];
+const VERTICALS = ["All","PSP","Travel","Treasury","Gaming","AdTech","Marketplaces","HR","AP","Aviation","Other"];
 const STATUSES = ["Going","TBD","Not Going"];
+const PCOLORS = ["#1a56db","#057a55","#c27803","#9333ea","#dc2626","#0891b2","#ea580c","#65a30d"];
+const WARM_COLORS = { Hot: {bg:"#fef2f2",color:"#991b1b",border:"#fecaca"}, Warm: {bg:"#fffbeb",color:"#92400e",border:"#fde68a"}, Cold: {bg:"#eff6ff",color:"#1e40af",border:"#bfdbfe"} };
 
 const INITIAL = [
   {id:1,name:"ICE Barcelona",location:"Barcelona",quarter:1,month:"Jan",vertical:"Gaming",status:"Going",attendees:["Ben Strugo","Gagan Samra","Diana Mihaylova"],participation:"Delegate",start:"19-Jan-2026",end:"21-Jan-2026",size:null,score:4,notes:""},
-  {id:2,name:"FITUR",location:"Madrid",quarter:1,month:"Jan",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Gagan Samra"],participation:"Exhibitor, Sponsor",start:"21-Jan-2026",end:"25-Jan-2026",size:null,score:5,notes:"Contact: silvia.bueno@ifema.es"},
+  {id:2,name:"FITUR",location:"Madrid",quarter:1,month:"Jan",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Gagan Samra"],participation:"Exhibitor, Sponsor",start:"21-Jan-2026",end:"25-Jan-2026",size:null,score:5,notes:"silvia.bueno@ifema.es"},
   {id:3,name:"IFX Dubai",location:"Dubai",quarter:1,month:"Feb",vertical:"PSP",status:"TBD",attendees:["Diana Mihaylova","Marc Padrosa","Gagan Samra"],participation:"Delegate",start:"10-Feb-2026",end:"",size:null,score:8,notes:""},
   {id:4,name:"Fintech Week Dubai",location:"Dubai",quarter:1,month:"Feb",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"16-Feb-2026",end:"",size:null,score:7,notes:""},
   {id:5,name:"Fintech Week Amsterdam",location:"Amsterdam",quarter:1,month:"Feb",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"26-Feb-2026",end:"",size:null,score:7,notes:""},
   {id:6,name:"Airline & Travel Payments Summit B2B",location:"London",quarter:1,month:"Feb",vertical:"Travel",status:"TBD",attendees:["Gregg Turner"],participation:"Delegate",start:"24-Feb-2026",end:"25-Feb-2026",size:null,score:7,notes:""},
-  {id:7,name:"Stockholm Fintech Week",location:"Stockholm",quarter:1,month:"Mar",vertical:"PSP",status:"TBD",attendees:["Gagan Samra"],participation:"Delegate",start:"18-Mar-2026",end:"",size:null,score:8,notes:"Merchant Acquirer, Money Mover focus"},
+  {id:7,name:"Stockholm Fintech Week",location:"Stockholm",quarter:1,month:"Mar",vertical:"PSP",status:"TBD",attendees:["Gagan Samra"],participation:"Delegate",start:"18-Mar-2026",end:"",size:null,score:8,notes:""},
   {id:8,name:"ITB Berlin",location:"Berlin",quarter:1,month:"Mar",vertical:"Travel",status:"Going",attendees:["Marc Padrosa"],participation:"Sponsor, Exhibitor",start:"3-Mar-2026",end:"5-Mar-2026",size:null,score:6,notes:""},
   {id:9,name:"MPE Berlin",location:"Berlin",quarter:1,month:"Mar",vertical:"PSP",status:"Going",attendees:["Ben Strugo","Diana Mihaylova"],participation:"Exhibitor",start:"17-Mar-2026",end:"19-Mar-2026",size:1400,score:9,notes:"1400 Attendees"},
   {id:10,name:"Pay360",location:"London",quarter:1,month:"Mar",vertical:"PSP",status:"TBD",attendees:["Ben Strugo","Diana Mihaylova"],participation:"Delegate",start:"25-Mar-2026",end:"26-Mar-2026",size:2000,score:9,notes:"2000 Attendees"},
@@ -46,7 +56,7 @@ const INITIAL = [
   {id:14,name:"Money 20/20 Asia",location:"Bangkok",quarter:2,month:"Apr",vertical:"PSP",status:"Going",attendees:["Ben Strugo","Diana Mihaylova"],participation:"Delegate",start:"",end:"",size:3000,score:9,notes:"3000 Attendees"},
   {id:15,name:"Juniper Summit",location:"Mallorca",quarter:2,month:"Apr",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Gagan Samra"],participation:"Speaker, Sponsor",start:"15-Apr-2026",end:"16-Apr-2026",size:null,score:6,notes:"juniper@ejuniper.com"},
   {id:16,name:"MRC Barcelona",location:"Barcelona",quarter:2,month:"Apr",vertical:"PSP",status:"TBD",attendees:["Ben Strugo"],participation:"Delegate",start:"",end:"",size:null,score:8,notes:"Merchant Risk Council"},
-  {id:17,name:"Smarter Faster Payments (NACHA)",location:"New Orleans",quarter:2,month:"Apr",vertical:"PSP",status:"TBD",attendees:["Rob Shannon"],participation:"Delegate",start:"",end:"",size:2000,score:8,notes:"2000 Attendees"},
+  {id:17,name:"Smarter Faster Payments (NACHA)",location:"New Orleans",quarter:2,month:"Apr",vertical:"PSP",status:"TBD",attendees:["Rob Shannon"],participation:"Delegate",start:"",end:"",size:2000,score:8,notes:""},
   {id:18,name:"Mexico Finance & Fintech Summit",location:"Mexico City",quarter:2,month:"Apr",vertical:"PSP",status:"TBD",attendees:["Rob Shannon"],participation:"Delegate",start:"",end:"",size:null,score:7,notes:""},
   {id:19,name:"ATM Dubai",location:"Dubai",quarter:2,month:"May",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Gagan Samra"],participation:"Delegate",start:"4-May-2026",end:"7-May-2026",size:null,score:7,notes:""},
   {id:20,name:"Dubai Fintech Summit",location:"Dubai",quarter:2,month:"May",vertical:"PSP",status:"Going",attendees:["Marc Padrosa"],participation:"Delegate",start:"11-May-2026",end:"12-May-2026",size:null,score:8,notes:""},
@@ -57,20 +67,20 @@ const INITIAL = [
   {id:25,name:"IFX Expo International",location:"TBD",quarter:2,month:"Jun",vertical:"PSP",status:"Going",attendees:["Marc Padrosa"],participation:"Delegate",start:"",end:"",size:null,score:9,notes:"Core FX audience"},
   {id:26,name:"Phocuswright Europe",location:"Barcelona",quarter:2,month:"Jun",vertical:"Travel",status:"Going",attendees:["Marc Padrosa"],participation:"Delegate",start:"",end:"",size:null,score:6,notes:""},
   {id:27,name:"Con-X by TravelgateX",location:"Mallorca",quarter:2,month:"Jun",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Aharon Navon"],participation:"Sponsor",start:"2-Jun-2026",end:"",size:null,score:6,notes:""},
-  {id:28,name:"TravelTech Show",location:"London",quarter:2,month:"Jun",vertical:"Travel",status:"Going",attendees:["Dor Golan"],participation:"Delegate",start:"",end:"",size:null,score:5,notes:"nsayeed@traveltechnologyeurope.com"},
-  {id:29,name:"GBTA Convention",location:"Denver",quarter:3,month:"Jul",vertical:"Travel",status:"TBD",attendees:[],participation:"",start:"",end:"",size:null,score:6,notes:"Corporate travel FX audience"},
+  {id:28,name:"TravelTech Show",location:"London",quarter:2,month:"Jun",vertical:"Travel",status:"Going",attendees:["Dor Golan"],participation:"Delegate",start:"",end:"",size:null,score:5,notes:""},
+  {id:29,name:"GBTA Convention",location:"Denver",quarter:3,month:"Jul",vertical:"Travel",status:"TBD",attendees:[],participation:"",start:"",end:"",size:null,score:6,notes:"Corporate travel FX"},
   {id:30,name:"SKIFT Global Forum",location:"New York",quarter:3,month:"Sep",vertical:"Travel",status:"Going",attendees:["Marc Padrosa"],participation:"Delegate",start:"",end:"",size:null,score:6,notes:""},
   {id:31,name:"Forex Expo Dubai",location:"Dubai",quarter:3,month:"Sep",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"",end:"",size:null,score:9,notes:"Core FX audience"},
   {id:32,name:"Payments Leaders Summit Q3",location:"Amsterdam",quarter:3,month:"Sep",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"",end:"",size:null,score:8,notes:""},
   {id:33,name:"Asia Business Show",location:"Singapore",quarter:3,month:"Sep",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"",end:"",size:null,score:7,notes:"M-DAQ people go every year"},
   {id:34,name:"Ecommerce Expo",location:"London",quarter:3,month:"Sep",vertical:"Marketplaces",status:"Going",attendees:["Diana Mihaylova"],participation:"Delegate",start:"",end:"",size:null,score:4,notes:""},
-  {id:35,name:"Sibos",location:"Frankfurt",quarter:3,month:"Oct",vertical:"PSP",status:"Going",attendees:["Ben Strugo"],participation:"Delegate",start:"",end:"",size:9000,score:10,notes:"9000 Attendees — cross-border banking core"},
+  {id:35,name:"Sibos",location:"Frankfurt",quarter:3,month:"Oct",vertical:"PSP",status:"Going",attendees:["Ben Strugo"],participation:"Delegate",start:"",end:"",size:9000,score:10,notes:"9000 Attendees — cross-border banking"},
   {id:36,name:"Money 20/20 USA",location:"Las Vegas",quarter:4,month:"Oct",vertical:"PSP",status:"Going",attendees:["Ben Strugo","Diana Mihaylova"],participation:"Exhibitor",start:"",end:"",size:10000,score:10,notes:"FLAGSHIP North America"},
   {id:37,name:"EuroFinance",location:"Budapest",quarter:4,month:"Oct",vertical:"Treasury",status:"Going",attendees:["Dor Golan","Diana Mihaylova"],participation:"Delegate",start:"",end:"",size:null,score:9,notes:"Treasury & FX audience"},
   {id:38,name:"Payments Leaders Summit Q4",location:"London",quarter:4,month:"Oct",vertical:"PSP",status:"Going",attendees:["Diana Mihaylova","Aharon Navon"],participation:"Delegate",start:"",end:"",size:null,score:9,notes:""},
   {id:39,name:"Fintech Week London Q4",location:"London",quarter:4,month:"Oct",vertical:"PSP",status:"Going",attendees:["Diana Mihaylova"],participation:"Delegate",start:"",end:"",size:null,score:7,notes:""},
   {id:40,name:"ITB Asia",location:"Singapore",quarter:4,month:"Oct",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Aharon Navon"],participation:"Delegate",start:"",end:"",size:null,score:6,notes:""},
-  {id:41,name:"Singapore FinTech Festival",location:"Singapore",quarter:4,month:"Nov",vertical:"PSP",status:"Going",attendees:["Ben Strugo"],participation:"Delegate",start:"",end:"",size:null,score:9,notes:"M-DAQ is going — good intel opportunity"},
+  {id:41,name:"Singapore FinTech Festival",location:"Singapore",quarter:4,month:"Nov",vertical:"PSP",status:"Going",attendees:["Ben Strugo"],participation:"Delegate",start:"",end:"",size:null,score:9,notes:"M-DAQ is going"},
   {id:42,name:"MoneyLive Europe",location:"Amsterdam",quarter:4,month:"Nov",vertical:"PSP",status:"Going",attendees:["Ben Strugo"],participation:"Delegate",start:"",end:"",size:1500,score:8,notes:"1500 senior PSP attendees"},
   {id:43,name:"WTM London",location:"London",quarter:4,month:"Nov",vertical:"Travel",status:"Going",attendees:["Marc Padrosa","Diana Mihaylova"],participation:"Delegate",start:"",end:"",size:null,score:6,notes:"justin.berman@reedexpo.co.uk"},
   {id:44,name:"Phocuswright US",location:"San Diego",quarter:4,month:"Nov",vertical:"Travel",status:"Going",attendees:["Marc Padrosa"],participation:"Delegate",start:"",end:"",size:null,score:6,notes:""},
@@ -79,392 +89,696 @@ const INITIAL = [
   {id:47,name:"Fintech Nerdcon",location:"Miami",quarter:4,month:"Dec",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"",end:"",size:null,score:6,notes:""},
 ];
 
+const SK = "grain_conf_v5";
+const LK = "grain_leads_v2";
 const sc = s => s>=9?"#1a56db":s>=7?"#057a55":s>=5?"#c27803":"#9ca3af";
-const tierOf = s => s>=9?1:s>=7?2:s>=5?3:4;
-const tierLabel = {1:"Must-attend",2:"High value",3:"Selective",4:"Monitor"};
-const tierColor = {1:"#1a56db",2:"#057a55",3:"#c27803",4:"#9ca3af"};
-const statusSt = {
-  "Going":     {bg:"#f0fdf4",color:"#166534",border:"#bbf7d0"},
-  "TBD":       {bg:"#fffbeb",color:"#92400e",border:"#fde68a"},
-  "Not Going": {bg:"#f9fafb",color:"#6b7280",border:"#e5e7eb"},
-};
+const sSt = {"Going":{bg:"#f0fdf4",color:"#166534",border:"#bbf7d0"},"TBD":{bg:"#fffbeb",color:"#92400e",border:"#fde68a"},"Not Going":{bg:"#f9fafb",color:"#6b7280",border:"#e5e7eb"}};
+const pc = n => PCOLORS[TEAM.indexOf(n)%PCOLORS.length];
+const ini = n => n.split(" ").map(x=>x[0]).join("");
+function ld(key,def){ try{const d=localStorage.getItem(key);return d?JSON.parse(d):def;}catch(e){return def;} }
+function sv(key,d){ try{localStorage.setItem(key,JSON.stringify(d));}catch(e){} }
 
-const STORAGE_KEY = "grain_conf_v3";
+const IS = {width:"100%",padding:"8px 10px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:13,color:"#111827",background:"#fff"};
+const BS = (o={})=>({padding:"8px 16px",borderRadius:8,border:"none",background:"#111827",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",...o});
 
-function load() {
-  try { const d = localStorage.getItem(STORAGE_KEY); return d ? JSON.parse(d) : INITIAL; } catch(e) { return INITIAL; }
-}
-function save(data) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
-}
+// ─── Shared components ────────────────────────────────────────────────────────
+function Avatar({name,size=26}){ const c=pc(name); return <div title={name} style={{width:size,height:size,borderRadius:"50%",background:c+"22",border:`1.5px solid ${c}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.36,fontWeight:700,color:c,flexShrink:0}}>{ini(name)}</div>; }
+function ScoreBar({score,w=44}){ return <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:w,height:4,borderRadius:2,background:"#f3f4f6",overflow:"hidden"}}><div style={{width:`${score*10}%`,height:"100%",background:sc(score),borderRadius:2}}/></div><span style={{fontSize:11,fontWeight:700,color:sc(score)}}>{score}</span></div>; }
+function Badge({status}){ const s=sSt[status]||sSt["Not Going"]; return <span style={{background:s.bg,color:s.color,border:`1px solid ${s.border}`,borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:500,whiteSpace:"nowrap"}}>{status}</span>; }
+function Pill({label,active,onClick}){ return <button onClick={onClick} style={{padding:"4px 12px",borderRadius:20,fontSize:12,border:`1.5px solid ${active?"#111827":"#e5e7eb"}`,background:active?"#111827":"#fff",color:active?"#fff":"#6b7280",cursor:"pointer",fontWeight:active?600:400}}>{label}</button>; }
+function Card({children,style={}}){ return <div style={{background:"#fff",borderRadius:12,border:"1px solid #ececec",...style}}>{children}</div>; }
+function CardHead({title,sub,right}){ return <div style={{padding:"13px 18px",borderBottom:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:13,fontWeight:700,color:"#111827"}}>{title}</div>{sub&&<div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{sub}</div>}</div>{right&&<div>{right}</div>}</div>; }
 
-const inp = {width:"100%",padding:"8px 10px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:13,color:"#111827",background:"#fff"};
-const sel = {...inp};
-const btn = (extra={}) => ({padding:"8px 16px",borderRadius:8,border:"none",background:"#111827",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",...extra});
-
-function Modal({title, onClose, children}) {
+function Modal({title,onClose,children,maxW=580}){
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:580,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.18)"}}>
+      <div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:maxW,maxHeight:"94vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.18)"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <h2 style={{fontSize:16,fontWeight:700,color:"#111827"}}>{title}</h2>
-          <button onClick={onClose} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9ca3af",lineHeight:1}}>×</button>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9ca3af",padding:"0 4px"}}>×</button>
         </div>
         {children}
       </div>
     </div>
   );
 }
+function F({label,children}){ return <div style={{marginBottom:12}}><label style={{display:"block",fontSize:11,fontWeight:700,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>{label}</label>{children}</div>; }
 
-function Field({label, children}) {
-  return (
-    <div style={{marginBottom:12}}>
-      <label style={{display:"block",fontSize:11,fontWeight:700,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function ConferenceForm({form, setForm, onSave, onCancel, title}) {
-  const toggle = name => setForm(f => ({...f, attendees: f.attendees.includes(name) ? f.attendees.filter(a=>a!==name) : [...f.attendees,name]}));
+// ─── Conference Form ──────────────────────────────────────────────────────────
+function ConfForm({form,setForm,onSave,onCancel,title}){
+  const tog=name=>setForm(f=>({...f,attendees:f.attendees.includes(name)?f.attendees.filter(a=>a!==name):[...f.attendees,name]}));
   return (
     <Modal title={title} onClose={onCancel}>
-      <Field label="Conference name"><input style={inp} value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Money 20/20 Europe"/></Field>
+      <F label="Name"><input style={IS} value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Conference name"/></F>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-        <Field label="Location"><input style={inp} value={form.location} onChange={e=>setForm(f=>({...f,location:e.target.value}))} placeholder="City, Country"/></Field>
-        <Field label="Vertical">
-          <select style={sel} value={form.vertical} onChange={e=>setForm(f=>({...f,vertical:e.target.value}))}>
-            {VERTICALS.map(v=><option key={v}>{v}</option>)}
-          </select>
-        </Field>
-        <Field label="Month">
-          <select style={sel} value={form.month} onChange={e=>setForm(f=>({...f,month:e.target.value}))}>
-            {MONTHS.map(m=><option key={m}>{m}</option>)}
-          </select>
-        </Field>
-        <Field label="Quarter">
-          <select style={sel} value={form.quarter} onChange={e=>setForm(f=>({...f,quarter:Number(e.target.value)}))}>
-            {[1,2,3,4].map(q=><option key={q} value={q}>Q{q}</option>)}
-          </select>
-        </Field>
-        <Field label="Start date"><input style={inp} value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))} placeholder="e.g. 10-Jun-2026"/></Field>
-        <Field label="End date"><input style={inp} value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))} placeholder="e.g. 12-Jun-2026"/></Field>
-        <Field label="Status">
-          <select style={sel} value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
-            {STATUSES.map(s=><option key={s}>{s}</option>)}
-          </select>
-        </Field>
-        <Field label="Participation"><input style={inp} value={form.participation} onChange={e=>setForm(f=>({...f,participation:e.target.value}))} placeholder="Delegate / Exhibitor / Speaker"/></Field>
-        <Field label="Est. attendees"><input style={inp} type="number" value={form.size||""} onChange={e=>setForm(f=>({...f,size:e.target.value}))} placeholder="e.g. 3000"/></Field>
-        <Field label="ICP score (1–10)">
+        <F label="Location"><input style={IS} value={form.location} onChange={e=>setForm(f=>({...f,location:e.target.value}))} placeholder="City, Country"/></F>
+        <F label="Vertical"><select style={IS} value={form.vertical} onChange={e=>setForm(f=>({...f,vertical:e.target.value}))}>{VERTICALS.filter(v=>v!=="All").map(v=><option key={v}>{v}</option>)}</select></F>
+        <F label="Month"><select style={IS} value={form.month} onChange={e=>setForm(f=>({...f,month:e.target.value}))}>{MONTHS.map(m=><option key={m}>{m}</option>)}</select></F>
+        <F label="Quarter"><select style={IS} value={form.quarter} onChange={e=>setForm(f=>({...f,quarter:Number(e.target.value)}))}>{[1,2,3,4].map(q=><option key={q} value={q}>Q{q}</option>)}</select></F>
+        <F label="Start"><input style={IS} value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))} placeholder="e.g. 10-Jun-2026"/></F>
+        <F label="End"><input style={IS} value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))} placeholder="e.g. 12-Jun-2026"/></F>
+        <F label="Status"><select style={IS} value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>{STATUSES.map(s=><option key={s}>{s}</option>)}</select></F>
+        <F label="Participation"><input style={IS} value={form.participation} onChange={e=>setForm(f=>({...f,participation:e.target.value}))} placeholder="Delegate / Exhibitor / Speaker"/></F>
+        <F label="Est. attendees"><input style={IS} type="number" value={form.size||""} onChange={e=>setForm(f=>({...f,size:e.target.value}))} placeholder="e.g. 3000"/></F>
+        <F label="ICP score (1–10)">
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <input style={{...inp,width:64}} type="number" min={1} max={10} value={form.score} onChange={e=>setForm(f=>({...f,score:Number(e.target.value)}))}/>
-            <div style={{flex:1,height:6,borderRadius:3,background:"#f3f4f6",overflow:"hidden"}}>
-              <div style={{height:"100%",width:`${Math.min(form.score,10)*10}%`,background:sc(form.score),borderRadius:3,transition:"width 0.2s"}}/>
-            </div>
+            <input style={{...IS,width:64}} type="number" min={1} max={10} value={form.score} onChange={e=>setForm(f=>({...f,score:Number(e.target.value)}))}/>
+            <div style={{flex:1,height:6,borderRadius:3,background:"#f3f4f6",overflow:"hidden"}}><div style={{height:"100%",width:`${Math.min(Number(form.score)||0,10)*10}%`,background:sc(form.score),borderRadius:3}}/></div>
           </div>
-        </Field>
+        </F>
       </div>
-      <Field label="Attendees">
-        <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:2}}>
-          {TEAM.map(name => {
-            const on = form.attendees.includes(name);
-            return <button key={name} onClick={()=>toggle(name)} style={{padding:"4px 12px",borderRadius:20,fontSize:12,border:`1.5px solid ${on?"#1a56db":"#e5e7eb"}`,background:on?"#eff6ff":"#fff",color:on?"#1a56db":"#6b7280",cursor:"pointer",fontWeight:on?600:400}}>{name.split(" ")[0]}</button>;
-          })}
-        </div>
-      </Field>
-      <Field label="Notes"><textarea style={{...inp,height:64,resize:"vertical"}} value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Contacts, reminders, strategy notes..."/></Field>
+      <F label="Attendees"><div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:2}}>{TEAM.map(name=>{const on=form.attendees.includes(name);return <button key={name} onClick={()=>tog(name)} style={{padding:"4px 12px",borderRadius:20,fontSize:12,border:`1.5px solid ${on?pc(name):"#e5e7eb"}`,background:on?"#f0f4ff":"#fff",color:on?pc(name):"#6b7280",cursor:"pointer",fontWeight:on?600:400}}>{name.split(" ")[0]}</button>;})}</div></F>
+      <F label="Notes"><textarea style={{...IS,height:60,resize:"vertical"}} value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Contacts, reminders..."/></F>
       <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
-        <button onClick={onCancel} style={{...btn({background:"#fff",color:"#374151",border:"1px solid #e5e7eb"})}}> Cancel</button>
-        <button onClick={onSave} style={btn()}>Save changes</button>
+        <button onClick={onCancel} style={BS({background:"#fff",color:"#374151",border:"1px solid #e5e7eb"})}>Cancel</button>
+        <button onClick={onSave} style={BS()}>Save</button>
       </div>
     </Modal>
   );
 }
 
-function Dashboard({conferences, onEdit}) {
-  const going = conferences.filter(c=>c.status==="Going");
-  const t1 = conferences.filter(c=>tierOf(c.score)===1);
-  const psp = conferences.filter(c=>c.vertical==="PSP");
-  const now = MONTHS[new Date().getMonth()];
-  const upcoming = conferences.filter(c=>c.month===now && c.status!=="Not Going");
+// ─── DASHBOARD ───────────────────────────────────────────────────────────────
+function Dashboard({all,leads,onEdit,vert,setVert}){
+  const now=MONTHS[new Date().getMonth()]; const ni=new Date().getMonth();
+  const confs=vert==="All"?all:all.filter(c=>c.vertical===vert);
+  const going=confs.filter(c=>c.status==="Going");
+  const thisM=confs.filter(c=>c.month===now&&c.status==="Going");
+  const nextM=confs.filter(c=>c.month===MONTHS[(ni+1)%12]&&c.status==="Going");
+  const tbd=confs.filter(c=>c.status==="TBD");
+  const totalLeads=leads.length;
+
+  const personStats=TEAM.map(name=>({name,year:going.filter(c=>c.attendees.includes(name)).length,month:thisM.filter(c=>c.attendees.includes(name)).length})).filter(p=>p.year>0).sort((a,b)=>b.year-a.year);
+
+  const clusters=useMemo(()=>{
+    const m={};
+    going.forEach(c=>{const k=`${c.location}|||${c.month}`;if(!m[k])m[k]={location:c.location,month:c.month,confs:[]};m[k].confs.push(c);});
+    return Object.values(m).filter(g=>g.confs.length>=2).sort((a,b)=>MONTHS.indexOf(a.month)-MONTHS.indexOf(b.month));
+  },[going]);
+
+  const heat=MONTHS.map(m=>({month:m,g:confs.filter(c=>c.month===m&&c.status==="Going").length,t:confs.filter(c=>c.month===m&&c.status==="TBD").length}));
+  const maxH=Math.max(...heat.map(h=>h.g+h.t),1);
 
   return (
     <div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
+      <div style={{display:"flex",gap:6,marginBottom:22,flexWrap:"wrap",alignItems:"center"}}>
+        <span style={{fontSize:12,color:"#9ca3af",marginRight:2}}>Filter:</span>
+        {VERTICALS.map(v=><Pill key={v} label={v} active={vert===v} onClick={()=>setVert(v)}/>)}
+      </div>
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:20}}>
         {[
-          {label:"Total tracked",value:conferences.length,sub:"conferences this year"},
-          {label:"Confirmed going",value:going.length,sub:`${Math.round(going.length/conferences.length*100)}% of pipeline`},
-          {label:"PSP / payments",value:psp.length,sub:"core ICP vertical"},
-          {label:"Tier 1 events",value:t1.length,sub:"score 9–10, must-attend"},
+          {label:"Confirmed this year",value:going.length,sub:"Going status"},
+          {label:"This month — "+now,value:thisM.length,sub:"conferences going"},
+          {label:"Next month — "+MONTHS[(ni+1)%12],value:nextM.length,sub:"coming up"},
+          {label:"Awaiting decision",value:tbd.length,sub:"TBD — need action"},
+          {label:"Total leads captured",value:totalLeads,sub:"across all conferences"},
         ].map(m=>(
-          <div key={m.label} style={{background:"#fff",borderRadius:12,padding:"16px 18px",border:"1px solid #f0f0f0"}}>
+          <Card key={m.label} style={{padding:"16px 18px"}}>
             <div style={{fontSize:11,color:"#9ca3af",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>{m.label}</div>
             <div style={{fontSize:30,fontWeight:700,color:"#111827",lineHeight:1}}>{m.value}</div>
             <div style={{fontSize:12,color:"#9ca3af",marginTop:4}}>{m.sub}</div>
-          </div>
+          </Card>
         ))}
       </div>
 
-      {upcoming.length > 0 && (
-        <div style={{background:"#eff6ff",borderRadius:12,padding:"14px 18px",marginBottom:24,border:"1px solid #bfdbfe"}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#1e40af",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}}>This month ({now} 2026)</div>
-          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-            {upcoming.map(c=>(
-              <div key={c.id} onClick={()=>onEdit(c)} style={{background:"#fff",border:"1px solid #bfdbfe",borderRadius:8,padding:"8px 12px",cursor:"pointer"}}>
-                <span style={{fontSize:13,fontWeight:600,color:"#111827"}}>{c.name}</span>
-                <span style={{fontSize:12,color:"#6b7280",marginLeft:6}}>{c.location}</span>
-                <span style={{display:"inline-block",marginLeft:8,background:statusSt[c.status].bg,color:statusSt[c.status].color,border:`1px solid ${statusSt[c.status].border}`,borderRadius:4,padding:"1px 7px",fontSize:11}}>{c.status}</span>
+      {/* Year heatmap */}
+      <Card style={{padding:"16px 20px",marginBottom:18}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#111827",marginBottom:6}}>Coverage heatmap — 2026</div>
+        <div style={{fontSize:12,color:"#6b7280",marginBottom:14}}>Blue = confirmed going · Amber = TBD · Darker = more events</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(12,1fr)",gap:6}}>
+          {heat.map(h=>{
+            const int=(h.g+h.t)/maxH; const isN=h.month===now;
+            const hasPast=MONTHS.indexOf(h.month)<MONTHS.indexOf(now);
+            return (
+              <div key={h.month} style={{textAlign:"center"}}>
+                <div style={{fontSize:10,color:isN?"#1a56db":hasPast?"#d1d5db":"#9ca3af",fontWeight:isN?700:400,marginBottom:4}}>{h.month}</div>
+                <div style={{height:52,borderRadius:8,background:h.g+h.t===0?"#f9fafb":`rgba(26,86,219,${0.08+int*0.72})`,border:isN?"2px solid #1a56db":hasPast?"1px solid #f0f0f0":"1px solid #e5e7eb",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,opacity:hasPast?0.5:1}}>
+                  {h.g>0&&<div style={{fontSize:14,fontWeight:700,color:int>0.6?"#fff":"#1a56db"}}>{h.g}</div>}
+                  {h.t>0&&<div style={{fontSize:10,color:int>0.6?"rgba(255,255,255,0.8)":"#c27803"}}>+{h.t} TBD</div>}
+                  {h.g===0&&h.t===0&&<div style={{fontSize:10,color:"#d1d5db"}}>—</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:18}}>
+        {/* This month */}
+        <Card>
+          <CardHead title={"Conferences this month"} sub={now+" 2026"} right={<span style={{fontSize:11,background:"#1a56db",color:"#fff",padding:"2px 8px",borderRadius:4,fontWeight:700}}>{thisM.length} events</span>}/>
+          <div style={{padding:"8px 14px"}}>
+            {thisM.length===0&&<div style={{fontSize:13,color:"#d1d5db",padding:"16px 0",textAlign:"center"}}>No confirmed events in {now}</div>}
+            {thisM.map(c=>(
+              <div key={c.id} onClick={()=>onEdit(c)} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 4px",borderBottom:"1px solid #f9fafb",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#fafafa"} onMouseLeave={e=>e.currentTarget.style.background=""}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:600,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
+                  <div style={{fontSize:11,color:"#9ca3af",marginTop:1}}>{c.location} · {c.vertical}</div>
+                </div>
+                <div style={{display:"flex",flexShrink:0}}>{c.attendees.slice(0,4).map((a,i)=><div key={a} style={{marginLeft:i?-6:0}}><Avatar name={a} size={24}/></div>)}</div>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
+
+        {/* Team load */}
+        <Card>
+          <CardHead title="Team conference load" sub="Full year · confirmed going"/>
+          <div style={{padding:"10px 18px"}}>
+            {personStats.map(p=>{
+              const c=pc(p.name); const pct=Math.round((p.year/Math.max(going.length,1))*100);
+              return (
+                <div key={p.name} style={{marginBottom:12}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <Avatar name={p.name} size={28}/>
+                      <div>
+                        <span style={{fontSize:13,fontWeight:500,color:"#111827"}}>{p.name}</span>
+                        {p.month>0&&<span style={{marginLeft:6,fontSize:10,background:"#eff6ff",color:"#1a56db",border:"1px solid #bfdbfe",borderRadius:3,padding:"1px 5px",fontWeight:600}}>{p.month} this month</span>}
+                      </div>
+                    </div>
+                    <span style={{fontSize:14,fontWeight:700,color:c}}>{p.year}</span>
+                  </div>
+                  <div style={{height:5,borderRadius:3,background:"#f3f4f6",overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:c,borderRadius:3}}/></div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+
+      {/* Trip clusters */}
+      {clusters.length>0&&(
+        <Card style={{padding:"16px 20px",marginBottom:18}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#111827",marginBottom:3}}>Trip clusters</div>
+          <div style={{fontSize:12,color:"#6b7280",marginBottom:14}}>Multiple confirmed events in the same city — one trip covers all of them</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:10}}>
+            {clusters.map((cl,i)=>(
+              <div key={i} style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"12px 14px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                  <span style={{fontSize:14,fontWeight:700,color:"#111827"}}>{cl.location}</span>
+                  <span style={{fontSize:11,background:"#dcfce7",color:"#166534",padding:"2px 7px",borderRadius:4,fontWeight:600}}>{cl.month} · {cl.confs.length} events</span>
+                </div>
+                {cl.confs.map(c=>(
+                  <div key={c.id} onClick={()=>onEdit(c)} style={{fontSize:12,color:"#374151",padding:"4px 0",borderBottom:"1px dashed #bbf7d0",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}} onMouseEnter={e=>e.currentTarget.style.color="#1a56db"} onMouseLeave={e=>e.currentTarget.style.color="#374151"}>
+                    <span>{c.name}</span>
+                    <ScoreBar score={c.score} w={32}/>
+                  </div>
+                ))}
+                <div style={{marginTop:8,fontSize:11,color:"#6b7280"}}>
+                  Team: {[...new Set(cl.confs.flatMap(c=>c.attendees))].map(a=>a.split(" ")[0]).join(", ")||"TBD"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
 
-      {[1,2,3,4].map(tier=>{
-        const tcs = conferences.filter(c=>tierOf(c.score)===tier && c.status!=="Not Going");
-        if(!tcs.length) return null;
-        return (
-          <div key={tier} style={{marginBottom:22}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:tierColor[tier]}}/>
-              <span style={{fontSize:13,fontWeight:700,color:"#111827"}}>Tier {tier} — {tierLabel[tier]}</span>
-              <span style={{fontSize:12,color:"#9ca3af"}}>{tcs.length} events</span>
+      {/* Top ranked */}
+      <Card>
+        <CardHead title="Top conferences by ICP score" right={<span style={{fontSize:11,color:"#9ca3af"}}>Going + TBD</span>}/>
+        {[...confs].filter(c=>c.status!=="Not Going").sort((a,b)=>b.score-a.score).slice(0,12).map((c,i)=>(
+          <div key={c.id} onClick={()=>onEdit(c)} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 18px",borderBottom:"1px solid #f9fafb",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#fafafa"} onMouseLeave={e=>e.currentTarget.style.background=""}>
+            <span style={{fontSize:12,color:"#d1d5db",width:18,textAlign:"right",flexShrink:0}}>{i+1}</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:600,color:"#111827",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.name}</div>
+              <div style={{fontSize:11,color:"#9ca3af"}}>{c.location} · {c.month} · {c.vertical}</div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:8}}>
-              {tcs.map(c=>(
-                <div key={c.id} onClick={()=>onEdit(c)} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:"1px solid #f0f0f0",borderTop:`3px solid ${tierColor[tier]}`,cursor:"pointer",transition:"box-shadow 0.15s"}}
-                  onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)"}
-                  onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
-                  <div style={{fontSize:13,fontWeight:600,color:"#111827",marginBottom:2,lineHeight:1.3}}>{c.name}</div>
-                  <div style={{fontSize:11,color:"#9ca3af",marginBottom:8}}>{c.location} · {c.month} · Q{c.quarter}</div>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <span style={{fontSize:11,background:statusSt[c.status]?.bg,color:statusSt[c.status]?.color,border:`1px solid ${statusSt[c.status]?.border}`,borderRadius:4,padding:"2px 7px"}}>{c.status}</span>
-                    <span style={{fontSize:12,fontWeight:700,color:tierColor[tier]}}>{c.score}/10</span>
-                  </div>
-                  {c.attendees.length>0 && <div style={{fontSize:11,color:"#9ca3af",marginTop:6}}>{c.attendees.map(a=>a.split(" ")[0]).join(", ")}</div>}
-                </div>
-              ))}
-            </div>
+            <div style={{display:"flex",flexShrink:0}}>{c.attendees.slice(0,3).map((a,i)=><div key={a} style={{marginLeft:i?-6:0}}><Avatar name={a} size={22}/></div>)}</div>
+            <Badge status={c.status}/>
+            <ScoreBar score={c.score}/>
           </div>
-        );
-      })}
+        ))}
+      </Card>
     </div>
   );
 }
 
-function Events({conferences, onEdit, onDelete, onAdd}) {
-  const [q, setQ] = useState("all");
-  const [v, setV] = useState("all");
-  const [s, setS] = useState("all");
-  const [search, setSearch] = useState("");
-
-  const filtered = conferences.filter(c => {
-    if(q!=="all" && String(c.quarter)!==q) return false;
-    if(v!=="all" && c.vertical!==v) return false;
-    if(s!=="all" && c.status!==s) return false;
-    if(search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.location.toLowerCase().includes(search.toLowerCase())) return false;
+// ─── ALL EVENTS ──────────────────────────────────────────────────────────────
+function Events({all,onEdit,onDelete,onAdd,vert,setVert}){
+  const [q,setQ]=useState("all"); const [s,setS]=useState("all"); const [search,setSearch]=useState("");
+  const filtered=all.filter(c=>{
+    if(q!=="all"&&String(c.quarter)!==q) return false;
+    if(vert!=="All"&&c.vertical!==vert) return false;
+    if(s!=="all"&&c.status!==s) return false;
+    if(search&&!c.name.toLowerCase().includes(search.toLowerCase())&&!c.location.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
-
   return (
     <div>
       <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{...inp,width:180}}/>
-        <select style={{...sel,width:"auto"}} value={q} onChange={e=>setQ(e.target.value)}>
-          <option value="all">All quarters</option>
-          {[1,2,3,4].map(n=><option key={n} value={n}>Q{n}</option>)}
-        </select>
-        <select style={{...sel,width:"auto"}} value={v} onChange={e=>setV(e.target.value)}>
-          <option value="all">All verticals</option>
-          {VERTICALS.map(x=><option key={x}>{x}</option>)}
-        </select>
-        <select style={{...sel,width:"auto"}} value={s} onChange={e=>setS(e.target.value)}>
-          <option value="all">All statuses</option>
-          {STATUSES.map(x=><option key={x}>{x}</option>)}
-        </select>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{...IS,width:180}}/>
+        <select style={{...IS,width:"auto"}} value={q} onChange={e=>setQ(e.target.value)}><option value="all">All quarters</option>{[1,2,3,4].map(n=><option key={n} value={n}>Q{n}</option>)}</select>
+        <select style={{...IS,width:"auto"}} value={vert} onChange={e=>setVert(e.target.value)}>{VERTICALS.map(v=><option key={v}>{v}</option>)}</select>
+        <select style={{...IS,width:"auto"}} value={s} onChange={e=>setS(e.target.value)}><option value="all">All statuses</option>{STATUSES.map(x=><option key={x}>{x}</option>)}</select>
         <span style={{fontSize:12,color:"#9ca3af",flex:1}}>{filtered.length} events</span>
-        <button onClick={onAdd} style={btn()}>+ Add event</button>
+        <button onClick={onAdd} style={BS()}>+ Add event</button>
       </div>
-      <div style={{background:"#fff",borderRadius:12,border:"1px solid #f0f0f0",overflow:"auto"}}>
+      <Card style={{overflowX:"auto"}}>
         <table>
-          <thead>
-            <tr style={{background:"#f9fafb",borderBottom:"1px solid #f0f0f0"}}>
-              {["Conference","Location","Month","Vertical","Status","Attendees","Score",""].map(h=>(
-                <th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>
-              ))}
-            </tr>
-          </thead>
+          <thead><tr style={{background:"#f9fafb",borderBottom:"1px solid #f0f0f0"}}>{["Conference","Location","Month","Vertical","Status","Team","Score",""].map(h=><th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
           <tbody>
             {filtered.map(c=>(
-              <tr key={c.id} style={{borderBottom:"1px solid #f9fafb"}}
-                onMouseEnter={e=>e.currentTarget.style.background="#fafafa"}
-                onMouseLeave={e=>e.currentTarget.style.background=""}>
+              <tr key={c.id} style={{borderBottom:"1px solid #f9fafb"}} onMouseEnter={e=>e.currentTarget.style.background="#fafafa"} onMouseLeave={e=>e.currentTarget.style.background=""}>
                 <td style={{padding:"10px 14px",fontWeight:600,color:"#111827",whiteSpace:"nowrap"}}>{c.name}</td>
                 <td style={{padding:"10px 14px",color:"#6b7280",whiteSpace:"nowrap"}}>{c.location}</td>
                 <td style={{padding:"10px 14px",color:"#6b7280",whiteSpace:"nowrap"}}>{c.month} Q{c.quarter}</td>
                 <td style={{padding:"10px 14px",color:"#6b7280"}}>{c.vertical}</td>
-                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
-                  <span style={{background:statusSt[c.status]?.bg,color:statusSt[c.status]?.color,border:`1px solid ${statusSt[c.status]?.border}`,borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:500}}>{c.status}</span>
-                </td>
-                <td style={{padding:"10px 14px",color:"#6b7280",fontSize:12,whiteSpace:"nowrap"}}>{c.attendees.length?c.attendees.map(a=>a.split(" ")[0]).join(", "):"—"}</td>
-                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <div style={{width:44,height:4,borderRadius:2,background:"#f3f4f6",overflow:"hidden"}}>
-                      <div style={{width:`${c.score*10}%`,height:"100%",background:sc(c.score),borderRadius:2}}/>
-                    </div>
-                    <span style={{fontSize:11,fontWeight:700,color:sc(c.score)}}>{c.score}</span>
-                  </div>
-                </td>
-                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
-                  <div style={{display:"flex",gap:4}}>
-                    <button onClick={()=>onEdit(c)} style={{padding:"4px 10px",border:"1px solid #e5e7eb",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#374151"}}>Edit</button>
-                    <button onClick={()=>onDelete(c.id)} style={{padding:"4px 8px",border:"1px solid #fee2e2",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#ef4444"}}>×</button>
-                  </div>
-                </td>
+                <td style={{padding:"10px 14px"}}><Badge status={c.status}/></td>
+                <td style={{padding:"10px 14px"}}><div style={{display:"flex",gap:2}}>{c.attendees.slice(0,4).map(a=><Avatar key={a} name={a} size={24}/>)}{c.attendees.length>4&&<span style={{fontSize:10,color:"#9ca3af",alignSelf:"center",marginLeft:2}}>+{c.attendees.length-4}</span>}</div></td>
+                <td style={{padding:"10px 14px"}}><ScoreBar score={c.score}/></td>
+                <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}><div style={{display:"flex",gap:4}}><button onClick={()=>onEdit(c)} style={{padding:"4px 10px",border:"1px solid #e5e7eb",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#374151"}}>Edit</button><button onClick={()=>onDelete(c.id)} style={{padding:"4px 8px",border:"1px solid #fee2e2",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#ef4444"}}>×</button></div></td>
               </tr>
             ))}
           </tbody>
         </table>
+      </Card>
+    </div>
+  );
+}
+
+// ─── MONTHLY PLANNER ─────────────────────────────────────────────────────────
+function Planner({all,onEdit,vert,setVert}){
+  const now=MONTHS[new Date().getMonth()];
+  const confs=vert==="All"?all:all.filter(c=>c.vertical===vert);
+  return (
+    <div>
+      <div style={{display:"flex",gap:6,marginBottom:18,flexWrap:"wrap",alignItems:"center"}}>
+        <span style={{fontSize:12,color:"#9ca3af",marginRight:2}}>Vertical:</span>
+        {VERTICALS.map(v=><Pill key={v} label={v} active={vert===v} onClick={()=>setVert(v)}/>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
+        {MONTHS.map(month=>{
+          const mcs=confs.filter(c=>c.month===month&&c.status!=="Not Going"); const isN=month===now;
+          return (
+            <Card key={month} style={{border:`1.5px solid ${isN?"#1a56db":"#ececec"}`}}>
+              <div style={{padding:"11px 16px",background:isN?"#eff6ff":"#f9fafb",borderBottom:"1px solid #f0f0f0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:14,fontWeight:700,color:isN?"#1a56db":"#111827"}}>{month} 2026</span>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>{isN&&<span style={{fontSize:10,background:"#1a56db",color:"#fff",padding:"2px 7px",borderRadius:4,fontWeight:700}}>NOW</span>}<span style={{fontSize:11,color:"#9ca3af"}}>{mcs.length}</span></div>
+              </div>
+              <div style={{padding:"10px 14px"}}>
+                {mcs.length===0&&<div style={{fontSize:12,color:"#d1d5db",padding:"6px 0"}}>No events — use Discover</div>}
+                {mcs.map(c=>(
+                  <div key={c.id} onClick={()=>onEdit(c)} style={{marginBottom:9,paddingBottom:9,borderBottom:"1px solid #f9fafb",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#fafafa"} onMouseLeave={e=>e.currentTarget.style.background=""}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                      <span style={{fontSize:13,fontWeight:600,color:"#111827",lineHeight:1.3,flex:1,marginRight:6}}>{c.name}</span>
+                      <span style={{fontSize:11,fontWeight:700,color:sc(c.score),flexShrink:0}}>{c.score}/10</span>
+                    </div>
+                    <div style={{fontSize:11,color:"#9ca3af",marginTop:2,marginBottom:5}}>{c.location} · {c.vertical}</div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div style={{display:"flex",gap:2}}>{c.attendees.slice(0,4).map((a,i)=><div key={a} style={{marginLeft:i?-5:0}}><Avatar name={a} size={20}/></div>)}</div>
+                      <Badge status={c.status}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function Planner({conferences, onEdit}) {
-  const now = MONTHS[new Date().getMonth()];
-  return (
-    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
-      {MONTHS.map(month=>{
-        const mcs = conferences.filter(c=>c.month===month && c.status!=="Not Going");
-        const isNow = month===now;
-        return (
-          <div key={month} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${isNow?"#1a56db":"#f0f0f0"}`,overflow:"hidden"}}>
-            <div style={{padding:"11px 16px",background:isNow?"#eff6ff":"#f9fafb",borderBottom:"1px solid #f0f0f0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontSize:14,fontWeight:700,color:isNow?"#1a56db":"#111827"}}>{month} 2026</span>
-              <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                {isNow && <span style={{fontSize:10,background:"#1a56db",color:"#fff",padding:"2px 7px",borderRadius:4,fontWeight:700}}>NOW</span>}
-                <span style={{fontSize:11,color:"#9ca3af"}}>{mcs.length} events</span>
-              </div>
-            </div>
-            <div style={{padding:"10px 14px"}}>
-              {mcs.length===0 && <div style={{fontSize:12,color:"#d1d5db",padding:"6px 0"}}>No events — use Discover to find some</div>}
-              {mcs.map(c=>(
-                <div key={c.id} onClick={()=>onEdit(c)} style={{marginBottom:8,paddingBottom:8,borderBottom:"1px solid #f9fafb",cursor:"pointer"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                    <div style={{fontSize:13,fontWeight:600,color:"#111827",lineHeight:1.3,flex:1,marginRight:6}}>{c.name}</div>
-                    <span style={{fontSize:11,fontWeight:700,color:sc(c.score),flexShrink:0}}>{c.score}/10</span>
+// ─── CONFERENCE MODE (mobile-friendly lead capture) ──────────────────────────
+function ConferenceMode({all,leads,setLeads,toast2}){
+  const going=all.filter(c=>c.status==="Going");
+  const [selConf,setSelConf]=useState(null);
+  const [showLead,setShowLead]=useState(false);
+  const [showLeads,setShowLeads]=useState(false);
+  const blank={firstName:"",lastName:"",company:"",role:"",email:"",phone:"",warmth:"Warm",notes:"",confId:null,syncedToHS:false,hsContactId:null};
+  const [leadForm,setLeadForm]=useState(blank);
+  const [syncing,setSyncing]=useState({});
+
+  const confLeads=selConf?leads.filter(l=>l.confId===selConf.id):[];
+
+  const saveLead=()=>{
+    if(!leadForm.firstName&&!leadForm.company){alert("Name or company required.");return;}
+    const newLead={...leadForm,id:Date.now(),confId:selConf.id,confName:selConf.name,capturedAt:new Date().toISOString(),syncedToHS:false,hsContactId:null};
+    setLeads(p=>[...p,newLead]);
+    setLeadForm({...blank,confId:selConf.id});
+    setShowLead(false);
+    toast2("Lead saved!");
+  };
+
+  const syncToHubSpot=async(lead)=>{
+    if(!HUBSPOT_API_KEY){alert("Add your HubSpot API key to the file (const HUBSPOT_API_KEY).");return;}
+    setSyncing(s=>({...s,[lead.id]:true}));
+    try {
+      // Create/update contact
+      const contactPayload={properties:{firstname:lead.firstName,lastname:lead.lastName,email:lead.email,phone:lead.phone,jobtitle:lead.role,company:lead.company,hs_lead_status:"NEW"}};
+      const cRes=await fetch("https://api.hubspot.com/crm/v3/objects/contacts",{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${HUBSPOT_API_KEY}`},body:JSON.stringify(contactPayload)});
+      const cData=await cRes.json();
+      const contactId=cData.id;
+
+      // Create company if provided
+      let companyId=null;
+      if(lead.company){
+        const coRes=await fetch("https://api.hubspot.com/crm/v3/objects/companies",{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${HUBSPOT_API_KEY}`},body:JSON.stringify({properties:{name:lead.company}})});
+        const coData=await coRes.json(); companyId=coData.id;
+        // Associate contact to company
+        if(contactId&&companyId){
+          await fetch(`https://api.hubspot.com/crm/v3/objects/contacts/${contactId}/associations/companies/${companyId}/contact_to_company`,{method:"PUT",headers:{"Authorization":`Bearer ${HUBSPOT_API_KEY}`}});
+        }
+      }
+
+      // Add note
+      const noteBody=`Met at: ${lead.confName}\nWarmth: ${lead.warmth}\nRole: ${lead.role||"N/A"}\nNotes: ${lead.notes||"None"}\n\nCaptured via Grain Conference Intelligence`;
+      const nRes=await fetch("https://api.hubspot.com/crm/v3/objects/notes",{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${HUBSPOT_API_KEY}`},body:JSON.stringify({properties:{hs_note_body:noteBody,hs_timestamp:new Date().getTime()}})});
+      const nData=await nRes.json();
+      if(contactId&&nData.id){
+        await fetch(`https://api.hubspot.com/crm/v3/objects/notes/${nData.id}/associations/contacts/${contactId}/note_to_contact`,{method:"PUT",headers:{"Authorization":`Bearer ${HUBSPOT_API_KEY}`}});
+      }
+
+      setLeads(p=>p.map(l=>l.id===lead.id?{...l,syncedToHS:true,hsContactId:contactId}:l));
+      toast2("Synced to HubSpot!");
+    }catch(e){
+      alert("HubSpot sync failed: "+e.message);
+    }
+    setSyncing(s=>({...s,[lead.id]:false}));
+  };
+
+  const deleteLead=id=>{if(window.confirm("Delete this lead?"))setLeads(p=>p.filter(l=>l.id!==id));};
+
+  if(!selConf){
+    return (
+      <div>
+        <div style={{fontSize:15,fontWeight:700,color:"#111827",marginBottom:4}}>Conference Mode</div>
+        <div style={{fontSize:13,color:"#6b7280",marginBottom:20}}>Select the conference you're at to start capturing leads. Works great on mobile.</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
+          {going.map(c=>{
+            const lCount=leads.filter(l=>l.confId===c.id).length;
+            return (
+              <div key={c.id} onClick={()=>setSelConf(c)} style={{background:"#fff",borderRadius:12,border:"1px solid #ececec",padding:"16px 18px",cursor:"pointer",borderTop:`3px solid ${sc(c.score)}`}} onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.08)"} onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
+                <div style={{fontSize:14,fontWeight:700,color:"#111827",marginBottom:3}}>{c.name}</div>
+                <div style={{fontSize:12,color:"#9ca3af",marginBottom:10}}>{c.location} · {c.month} · {c.vertical}</div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{display:"flex",gap:2}}>{c.attendees.slice(0,4).map((a,i)=><div key={a} style={{marginLeft:i?-5:0}}><Avatar name={a} size={22}/></div>)}</div>
+                  <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                    {lCount>0&&<span style={{fontSize:11,background:"#eff6ff",color:"#1e40af",border:"1px solid #bfdbfe",borderRadius:4,padding:"2px 7px",fontWeight:600}}>{lCount} leads</span>}
+                    <span style={{fontSize:11,background:"#f0fdf4",color:"#166534",border:"1px solid #bbf7d0",borderRadius:4,padding:"2px 7px"}}>Enter →</span>
                   </div>
-                  <div style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{c.location} · {c.vertical}</div>
-                  {c.attendees.length>0 && <div style={{fontSize:11,color:"#6b7280",marginTop:2}}>{c.attendees.map(a=>a.split(" ")[0]).join(", ")}</div>}
-                  <span style={{display:"inline-block",marginTop:4,background:statusSt[c.status]?.bg,color:statusSt[c.status]?.color,border:`1px solid ${statusSt[c.status]?.border}`,borderRadius:4,padding:"1px 7px",fontSize:10}}>{c.status}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Conference header */}
+      <div style={{background:"#111827",borderRadius:12,padding:"16px 20px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div>
+          <div style={{fontSize:16,fontWeight:700,color:"#fff"}}>{selConf.name}</div>
+          <div style={{fontSize:12,color:"#9ca3af",marginTop:2}}>{selConf.location} · {selConf.month} 2026</div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setShowLeads(true)} style={BS({background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)"})}>{confLeads.length} leads</button>
+          <button onClick={()=>setShowLead(true)} style={BS({background:"#1a56db"})}>+ Capture lead</button>
+          <button onClick={()=>setSelConf(null)} style={BS({background:"transparent",border:"1px solid rgba(255,255,255,0.2)"})}>← Back</button>
+        </div>
+      </div>
+
+      {/* Conference notes */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        <Card>
+          <CardHead title="Quick stats"/>
+          <div style={{padding:"12px 18px"}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {[
+                {label:"Leads captured",value:confLeads.length},
+                {label:"Hot leads",value:confLeads.filter(l=>l.warmth==="Hot").length},
+                {label:"Warm leads",value:confLeads.filter(l=>l.warmth==="Warm").length},
+                {label:"Synced to HubSpot",value:confLeads.filter(l=>l.syncedToHS).length},
+              ].map(m=>(
+                <div key={m.label} style={{background:"#f9fafb",borderRadius:8,padding:"10px 12px"}}>
+                  <div style={{fontSize:11,color:"#9ca3af",marginBottom:3}}>{m.label}</div>
+                  <div style={{fontSize:22,fontWeight:700,color:"#111827"}}>{m.value}</div>
                 </div>
               ))}
             </div>
           </div>
-        );
-      })}
+        </Card>
+
+        <Card>
+          <CardHead title="Team at this conference"/>
+          <div style={{padding:"12px 18px"}}>
+            {selConf.attendees.length===0&&<div style={{fontSize:13,color:"#d1d5db"}}>No team members assigned</div>}
+            {selConf.attendees.map(a=>(
+              <div key={a} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                <Avatar name={a} size={32}/>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#111827"}}>{a}</div>
+                  <div style={{fontSize:11,color:"#9ca3af"}}>{leads.filter(l=>l.confId===selConf.id&&l.capturedBy===a).length} leads captured</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Recent leads preview */}
+      {confLeads.length>0&&(
+        <Card style={{marginTop:16}}>
+          <CardHead title="Leads captured" right={<button onClick={()=>setShowLeads(true)} style={{fontSize:12,color:"#1a56db",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>View all →</button>}/>
+          <div>
+            {confLeads.slice(0,5).map(lead=>{
+              const wc=WARM_COLORS[lead.warmth]||WARM_COLORS.Warm;
+              return (
+                <div key={lead.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 18px",borderBottom:"1px solid #f9fafb"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"#111827"}}>{lead.firstName} {lead.lastName} {lead.company&&<span style={{fontSize:11,color:"#9ca3af",fontWeight:400}}>· {lead.company}</span>}</div>
+                    <div style={{fontSize:11,color:"#9ca3af",marginTop:1}}>{lead.role||"Role not set"} {lead.email&&`· ${lead.email}`}</div>
+                  </div>
+                  <span style={{background:wc.bg,color:wc.color,border:`1px solid ${wc.border}`,borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:600}}>{lead.warmth}</span>
+                  {lead.syncedToHS
+                    ? <span style={{fontSize:11,color:"#057a55",fontWeight:600}}>✓ HubSpot</span>
+                    : <button onClick={()=>syncToHubSpot(lead)} disabled={syncing[lead.id]} style={BS({fontSize:11,padding:"4px 10px",background:"#f97316",opacity:syncing[lead.id]?0.6:1})}>{syncing[lead.id]?"Syncing...":"→ HubSpot"}</button>
+                  }
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Lead capture form */}
+      {showLead&&(
+        <Modal title="Capture lead" onClose={()=>setShowLead(false)}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <F label="First name"><input style={IS} value={leadForm.firstName} onChange={e=>setLeadForm(f=>({...f,firstName:e.target.value}))} placeholder="John"/></F>
+            <F label="Last name"><input style={IS} value={leadForm.lastName} onChange={e=>setLeadForm(f=>({...f,lastName:e.target.value}))} placeholder="Smith"/></F>
+            <F label="Company"><input style={IS} value={leadForm.company} onChange={e=>setLeadForm(f=>({...f,company:e.target.value}))} placeholder="Acme Payments Ltd"/></F>
+            <F label="Role / Title"><input style={IS} value={leadForm.role} onChange={e=>setLeadForm(f=>({...f,role:e.target.value}))} placeholder="Head of Payments"/></F>
+            <F label="Email"><input style={IS} type="email" value={leadForm.email} onChange={e=>setLeadForm(f=>({...f,email:e.target.value}))} placeholder="john@acme.com"/></F>
+            <F label="Phone"><input style={IS} value={leadForm.phone} onChange={e=>setLeadForm(f=>({...f,phone:e.target.value}))} placeholder="+44 7700 900000"/></F>
+            <F label="Warmth">
+              <div style={{display:"flex",gap:6}}>
+                {["Hot","Warm","Cold"].map(w=>{const wc=WARM_COLORS[w];return <button key={w} onClick={()=>setLeadForm(f=>({...f,warmth:w}))} style={{flex:1,padding:"7px",borderRadius:8,border:`1.5px solid ${leadForm.warmth===w?wc.border:"#e5e7eb"}`,background:leadForm.warmth===w?wc.bg:"#fff",color:leadForm.warmth===w?wc.color:"#6b7280",cursor:"pointer",fontSize:13,fontWeight:leadForm.warmth===w?700:400}}>{w}</button>;})}
+              </div>
+            </F>
+            <F label="Captured by">
+              <select style={IS} value={leadForm.capturedBy||""} onChange={e=>setLeadForm(f=>({...f,capturedBy:e.target.value}))}>
+                <option value="">Select...</option>
+                {TEAM.map(t=><option key={t}>{t}</option>)}
+              </select>
+            </F>
+          </div>
+          <F label="Notes"><textarea style={{...IS,height:72,resize:"vertical"}} value={leadForm.notes} onChange={e=>setLeadForm(f=>({...f,notes:e.target.value}))} placeholder="What did you discuss? FX pain points, volume, interest level..."/></F>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+            <button onClick={()=>setShowLead(false)} style={BS({background:"#fff",color:"#374151",border:"1px solid #e5e7eb"})}>Cancel</button>
+            <button onClick={saveLead} style={BS()}>Save lead</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* All leads modal */}
+      {showLeads&&(
+        <Modal title={`All leads — ${selConf.name}`} onClose={()=>setShowLeads(false)} maxW={780}>
+          {confLeads.length===0&&<div style={{fontSize:13,color:"#9ca3af",textAlign:"center",padding:"32px 0"}}>No leads yet. Hit "Capture lead" to start.</div>}
+          {confLeads.map(lead=>{
+            const wc=WARM_COLORS[lead.warmth]||WARM_COLORS.Warm;
+            return (
+              <div key={lead.id} style={{background:"#f9fafb",borderRadius:10,padding:"14px 16px",marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                  <div>
+                    <span style={{fontSize:14,fontWeight:700,color:"#111827"}}>{lead.firstName} {lead.lastName}</span>
+                    {lead.company&&<span style={{fontSize:13,color:"#6b7280",marginLeft:8}}>{lead.company}</span>}
+                    {lead.role&&<span style={{fontSize:12,color:"#9ca3af",marginLeft:8}}>{lead.role}</span>}
+                  </div>
+                  <span style={{background:wc.bg,color:wc.color,border:`1px solid ${wc.border}`,borderRadius:4,padding:"2px 10px",fontSize:12,fontWeight:600}}>{lead.warmth}</span>
+                </div>
+                <div style={{fontSize:12,color:"#6b7280",marginBottom:8,display:"flex",gap:16,flexWrap:"wrap"}}>
+                  {lead.email&&<span>✉ {lead.email}</span>}
+                  {lead.phone&&<span>☎ {lead.phone}</span>}
+                  {lead.capturedBy&&<span>👤 {lead.capturedBy.split(" ")[0]}</span>}
+                </div>
+                {lead.notes&&<div style={{fontSize:12,color:"#374151",background:"#fff",borderRadius:6,padding:"8px 10px",marginBottom:8,border:"1px solid #e5e7eb"}}>{lead.notes}</div>}
+                <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                  <button onClick={()=>deleteLead(lead.id)} style={{padding:"4px 10px",border:"1px solid #fee2e2",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#ef4444"}}>Delete</button>
+                  {lead.syncedToHS
+                    ? <span style={{fontSize:12,color:"#057a55",fontWeight:600,padding:"4px 10px"}}>✓ Synced to HubSpot</span>
+                    : <button onClick={()=>syncToHubSpot(lead)} disabled={syncing[lead.id]} style={BS({fontSize:12,padding:"5px 14px",background:"#f97316",opacity:syncing[lead.id]?0.6:1})}>{syncing[lead.id]?"Syncing...":"Sync to HubSpot →"}</button>
+                  }
+                </div>
+              </div>
+            );
+          })}
+        </Modal>
+      )}
     </div>
   );
 }
 
-function Discover({conferences, onAdd}) {
-  const [month, setMonth] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState([]);
-  const [error, setError] = useState("");
+// ─── ALL LEADS view ───────────────────────────────────────────────────────────
+function AllLeads({all,leads,setLeads,toast2}){
+  const [search,setSearch]=useState("");
+  const [filterW,setFilterW]=useState("all");
+  const [syncing,setSyncing]=useState({});
 
-  const find = async () => {
-    if(!month) { setError("Please select a month first."); return; }
-    setLoading(true); setResults([]); setError("");
-    const existing = conferences.map(c=>c.name).join(", ");
-    const prompt = `You are a conference research specialist for Grain, a B2B fintech that helps PSPs (payment service providers), cross-border payment companies, and businesses with FX exposure manage currency risk.
+  const filtered=leads.filter(l=>{
+    if(filterW!=="all"&&l.warmth!==filterW) return false;
+    if(search&&![l.firstName,l.lastName,l.company,l.email,l.confName].filter(Boolean).some(x=>x.toLowerCase().includes(search.toLowerCase()))) return false;
+    return true;
+  });
 
-Find 6-8 relevant conferences happening in ${month} 2026 for Grain to meet PSPs, cross-border payment companies, or companies with significant FX exposure.
-
-Already tracked (do not repeat): ${existing}
-
-For each, provide: name, location, approximate dates, why it's relevant for Grain (PSP/FX/cross-border angle), estimated attendee size, ICP fit score out of 10, recommended action.
-
-Respond ONLY with a valid JSON array, no markdown, no explanation:
-[{"name":"...","location":"...","dates":"...","why":"...","size":"...","score":8,"action":"..."}]`;
-
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1200,messages:[{role:"user",content:prompt}]})
-      });
-      const data = await res.json();
-      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
-      const clean = text.replace(/```json|```/g,"").trim();
-      setResults(JSON.parse(clean));
-    } catch(e) {
-      setError("Something went wrong. Try again in a moment.");
-    }
-    setLoading(false);
+  const syncToHubSpot=async(lead)=>{
+    if(!HUBSPOT_API_KEY){alert("Add your HubSpot API key to the file.");return;}
+    setSyncing(s=>({...s,[lead.id]:true}));
+    try{
+      const cRes=await fetch("https://api.hubspot.com/crm/v3/objects/contacts",{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${HUBSPOT_API_KEY}`},body:JSON.stringify({properties:{firstname:lead.firstName,lastname:lead.lastName,email:lead.email,phone:lead.phone,jobtitle:lead.role,company:lead.company}})});
+      const cData=await cRes.json();
+      if(lead.company){
+        const coRes=await fetch("https://api.hubspot.com/crm/v3/objects/companies",{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${HUBSPOT_API_KEY}`},body:JSON.stringify({properties:{name:lead.company}})});
+        const coData=await coRes.json();
+        if(cData.id&&coData.id) await fetch(`https://api.hubspot.com/crm/v3/objects/contacts/${cData.id}/associations/companies/${coData.id}/contact_to_contact`,{method:"PUT",headers:{"Authorization":`Bearer ${HUBSPOT_API_KEY}`}});
+      }
+      const noteBody=`Met at: ${lead.confName}\nWarmth: ${lead.warmth}\nNotes: ${lead.notes||"None"}\n\nCaptu via Grain Conference Intelligence`;
+      const nRes=await fetch("https://api.hubspot.com/crm/v3/objects/notes",{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${HUBSPOT_API_KEY}`},body:JSON.stringify({properties:{hs_note_body:noteBody,hs_timestamp:new Date().getTime()}})});
+      const nData=await nRes.json();
+      if(cData.id&&nData.id) await fetch(`https://api.hubspot.com/crm/v3/objects/notes/${nData.id}/associations/contacts/${cData.id}/note_to_contact`,{method:"PUT",headers:{"Authorization":`Bearer ${HUBSPOT_API_KEY}`}});
+      setLeads(p=>p.map(l=>l.id===lead.id?{...l,syncedToHS:true,hsContactId:cData.id}:l));
+      toast2("Synced!");
+    }catch(e){alert("Sync failed: "+e.message);}
+    setSyncing(s=>({...s,[lead.id]:false}));
   };
 
-  const addIt = r => {
-    const mo = MONTHS.find(m=>r.dates?.includes(m))||month;
-    onAdd({
-      id:Date.now(),
-      name:r.name,location:r.location,
-      quarter:Math.ceil((MONTHS.indexOf(mo)+1)/3)||2,
-      month:mo,vertical:"PSP",status:"TBD",
-      attendees:[],participation:"Delegate",
-      start:r.dates||"",end:"",
-      size:parseInt((r.size||"").replace(/[^0-9]/g,""))||null,
-      score:Number(r.score)||7,
-      notes:r.why||""
-    });
+  const syncAll=async()=>{
+    const unsynced=filtered.filter(l=>!l.syncedToHS);
+    if(!unsynced.length){toast2("All leads already synced!");return;}
+    for(const l of unsynced) await syncToHubSpot(l);
+    toast2(`${unsynced.length} leads synced!`);
   };
 
   return (
     <div>
-      <div style={{background:"#fff",borderRadius:12,border:"1px solid #f0f0f0",padding:"22px 24px",marginBottom:20}}>
-        <div style={{fontSize:15,fontWeight:700,color:"#111827",marginBottom:4}}>AI Conference Discovery</div>
-        <div style={{fontSize:13,color:"#6b7280",marginBottom:18,lineHeight:1.6}}>Pick a month and Claude will find PSP, cross-border, and FX-focused events you're not tracking yet. One click adds them to your dashboard.</div>
-        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-          <select value={month} onChange={e=>setMonth(e.target.value)} style={{...sel,width:"auto"}}>
-            <option value="">Select a month...</option>
-            {MONTHS.map(m=><option key={m} value={m}>{m} 2026</option>)}
-          </select>
-          <button onClick={find} disabled={loading} style={{...btn(),opacity:loading?0.6:1,cursor:loading?"not-allowed":"pointer"}}>
-            {loading?"Searching...":"Find conferences →"}
-          </button>
-        </div>
-        {error && <div style={{fontSize:12,color:"#ef4444",marginTop:10}}>{error}</div>}
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search leads..." style={{...IS,width:200}}/>
+        <select style={{...IS,width:"auto"}} value={filterW} onChange={e=>setFilterW(e.target.value)}>
+          <option value="all">All warmth</option>{["Hot","Warm","Cold"].map(w=><option key={w}>{w}</option>)}
+        </select>
+        <span style={{fontSize:12,color:"#9ca3af",flex:1}}>{filtered.length} leads</span>
+        {!HUBSPOT_API_KEY&&<span style={{fontSize:11,color:"#c27803",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 10px"}}>⚠ Add HubSpot key to enable sync</span>}
+        <button onClick={syncAll} style={BS({background:"#f97316"})}>Sync all to HubSpot →</button>
       </div>
+      <Card style={{overflowX:"auto"}}>
+        <table>
+          <thead><tr style={{background:"#f9fafb",borderBottom:"1px solid #f0f0f0"}}>{["Name","Company","Role","Email","Conference","Warmth","Captured by","HubSpot",""].map(h=><th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:11,fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+          <tbody>
+            {filtered.length===0&&<tr><td colSpan={9} style={{padding:"32px",textAlign:"center",color:"#9ca3af",fontSize:13}}>No leads yet. Use Conference Mode to capture leads at events.</td></tr>}
+            {filtered.map(lead=>{
+              const wc=WARM_COLORS[lead.warmth]||WARM_COLORS.Warm;
+              return (
+                <tr key={lead.id} style={{borderBottom:"1px solid #f9fafb"}} onMouseEnter={e=>e.currentTarget.style.background="#fafafa"} onMouseLeave={e=>e.currentTarget.style.background=""}>
+                  <td style={{padding:"10px 14px",fontWeight:600,color:"#111827",whiteSpace:"nowrap"}}>{lead.firstName} {lead.lastName}</td>
+                  <td style={{padding:"10px 14px",color:"#374151"}}>{lead.company||"—"}</td>
+                  <td style={{padding:"10px 14px",color:"#6b7280",whiteSpace:"nowrap"}}>{lead.role||"—"}</td>
+                  <td style={{padding:"10px 14px",color:"#6b7280",fontSize:12}}>{lead.email||"—"}</td>
+                  <td style={{padding:"10px 14px",color:"#6b7280",fontSize:12,whiteSpace:"nowrap"}}>{lead.confName}</td>
+                  <td style={{padding:"10px 14px"}}><span style={{background:wc.bg,color:wc.color,border:`1px solid ${wc.border}`,borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:600}}>{lead.warmth}</span></td>
+                  <td style={{padding:"10px 14px",color:"#6b7280",fontSize:12}}>{lead.capturedBy?lead.capturedBy.split(" ")[0]:"—"}</td>
+                  <td style={{padding:"10px 14px",whiteSpace:"nowrap"}}>
+                    {lead.syncedToHS
+                      ?<span style={{fontSize:11,color:"#057a55",fontWeight:600}}>✓ Synced</span>
+                      :<button onClick={()=>syncToHubSpot(lead)} disabled={syncing[lead.id]} style={BS({fontSize:11,padding:"4px 10px",background:"#f97316",opacity:syncing[lead.id]?0.6:1})}>{syncing[lead.id]?"...":"Sync"}</button>
+                    }
+                  </td>
+                  <td style={{padding:"10px 14px"}}><button onClick={()=>setLeads(p=>p.filter(l=>l.id!==lead.id))} style={{padding:"4px 8px",border:"1px solid #fee2e2",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#ef4444"}}>×</button></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Card>
+    </div>
+  );
+}
 
-      {loading && (
-        <div style={{background:"#fff",borderRadius:12,border:"1px solid #f0f0f0",padding:40,textAlign:"center",color:"#9ca3af",fontSize:13}}>
-          Searching for PSP, FX & cross-border events in {month} 2026...
+// ─── DISCOVER ────────────────────────────────────────────────────────────────
+function Discover({all,onAdd}){
+  const [month,setMonth]=useState(""); const [vert,setVert]=useState("PSP");
+  const [loading,setLoading]=useState(false); const [results,setResults]=useState([]); const [error,setError]=useState("");
+
+  const find=async()=>{
+    if(!month){setError("Select a month first.");return;}
+    setLoading(true);setResults([]);setError("");
+    const existing=all.map(c=>c.name).join(", ");
+    const focus=vert==="All"?"fintech, payments, FX, cross-border":vert==="PSP"?"PSPs, payment processors, acquirers, money movers":vert==="Travel"?"travel companies with FX exposure — OTAs, airlines, hotel chains":vert==="Treasury"?"treasury professionals, CFOs managing FX":vert;
+    const prompt=`You are a B2B conference researcher for Grain, a fintech that helps PSPs, cross-border payment companies, and FX-exposed businesses manage currency risk.\n\nFind 6-8 industry conferences in ${month} 2026 focused on: ${focus}. Do not suggest: ${existing}\n\nFor each: name, location, approximate dates, why relevant for Grain (PSP/FX/cross-border angle), estimated attendees, ICP score out of 10, recommended action.\n\nRespond ONLY with valid JSON array, no markdown:\n[{"name":"...","location":"...","dates":"...","why":"...","size":"...","score":8,"action":"..."}]`;
+    try{
+      const h={"Content-Type":"application/json"};
+      if(ANTHROPIC_API_KEY){h["x-api-key"]=ANTHROPIC_API_KEY;h["anthropic-version"]="2023-06-01";}
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:h,body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1400,messages:[{role:"user",content:prompt}]})});
+      const data=await res.json();
+      if(data.error){setError("API error: "+data.error.message);setLoading(false);return;}
+      const txt=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+      setResults(JSON.parse(txt.replace(/```json|```/g,"").trim()));
+    }catch(e){setError("Something went wrong — check your Anthropic API key is set in the file.");}
+    setLoading(false);
+  };
+
+  const addIt=r=>{
+    const mo=MONTHS.find(m=>r.dates?.includes(m))||month;
+    onAdd({id:Date.now(),name:r.name,location:r.location,quarter:Math.ceil((MONTHS.indexOf(mo)+1)/3)||2,month:mo,vertical:vert==="All"?"PSP":vert,status:"TBD",attendees:[],participation:"Delegate",start:r.dates||"",end:"",size:parseInt((r.size||"").replace(/[^0-9]/g,""))||null,score:Number(r.score)||7,notes:r.why||""});
+  };
+
+  return (
+    <div>
+      <Card style={{padding:"22px 24px",marginBottom:20}}>
+        <div style={{fontSize:15,fontWeight:700,color:"#111827",marginBottom:4}}>AI Conference Discovery</div>
+        <div style={{fontSize:13,color:"#6b7280",marginBottom:18,lineHeight:1.6}}>Pick a month and vertical. Claude finds conferences you're not tracking yet and scores them for Grain's ICP.</div>
+        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+          <select value={month} onChange={e=>setMonth(e.target.value)} style={{...IS,width:"auto"}}><option value="">Select month...</option>{MONTHS.map(m=><option key={m} value={m}>{m} 2026</option>)}</select>
+          <select value={vert} onChange={e=>setVert(e.target.value)} style={{...IS,width:"auto"}}>{VERTICALS.map(v=><option key={v}>{v}</option>)}</select>
+          <button onClick={find} disabled={loading} style={{...BS(),opacity:loading?0.6:1,cursor:loading?"not-allowed":"pointer"}}>{loading?"Searching...":"Find conferences →"}</button>
         </div>
-      )}
-
-      {results.length>0 && (
+        {!ANTHROPIC_API_KEY&&<div style={{marginTop:12,padding:"10px 14px",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,fontSize:12,color:"#92400e"}}>⚠ Add your Anthropic API key: open index.html, find <code style={{background:"#fef3c7",padding:"1px 4px",borderRadius:3}}>const ANTHROPIC_API_KEY=""</code> and paste your key from console.anthropic.com</div>}
+        {error&&<div style={{fontSize:12,color:"#ef4444",marginTop:10}}>{error}</div>}
+      </Card>
+      {loading&&<Card style={{padding:40,textAlign:"center"}}><div style={{color:"#9ca3af",fontSize:13}}>Searching for {vert} conferences in {month} 2026...</div></Card>}
+      {results.length>0&&(
         <>
-          <div style={{fontSize:13,fontWeight:600,color:"#111827",marginBottom:12}}>Found {results.length} conferences for {month} 2026</div>
+          <div style={{fontSize:13,fontWeight:600,color:"#111827",marginBottom:12}}>{results.length} conferences found for {month} 2026</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:12}}>
             {results.map((r,i)=>{
-              const already = conferences.some(c=>c.name.toLowerCase()===r.name.toLowerCase());
+              const s=Number(r.score)||7; const already=all.some(c=>c.name.toLowerCase()===r.name.toLowerCase());
               return (
-                <div key={i} style={{background:"#fff",borderRadius:12,border:"1px solid #f0f0f0",padding:"16px 18px",borderTop:`3px solid ${sc(Number(r.score)||7)}`}}>
+                <Card key={i} style={{padding:"16px 18px",borderTop:`3px solid ${sc(s)}`}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
                     <div style={{fontSize:14,fontWeight:700,color:"#111827",lineHeight:1.3,flex:1,marginRight:8}}>{r.name}</div>
-                    <span style={{fontSize:12,fontWeight:700,color:sc(Number(r.score)||7),flexShrink:0}}>{r.score}/10</span>
+                    <span style={{fontSize:12,fontWeight:700,color:sc(s),flexShrink:0}}>{r.score}/10</span>
                   </div>
                   <div style={{fontSize:12,color:"#6b7280",marginBottom:6}}>{r.location} · {r.dates}</div>
                   <div style={{fontSize:12,color:"#374151",lineHeight:1.55,marginBottom:12}}>{r.why}</div>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:11,background:"#f3f4f6",color:"#6b7280",padding:"2px 8px",borderRadius:4}}>{r.action}</span>
-                    {already
-                      ? <span style={{fontSize:11,color:"#9ca3af"}}>Already tracked</span>
-                      : <button onClick={()=>addIt(r)} style={{...btn({fontSize:11,padding:"5px 12px"})}}>+ Add to tracker</button>
-                    }
+                    {already?<span style={{fontSize:11,color:"#9ca3af"}}>Already tracked</span>:<button onClick={()=>addIt(r)} style={BS({fontSize:11,padding:"5px 12px"})}>+ Add</button>}
                   </div>
-                </div>
+                </Card>
               );
             })}
           </div>
@@ -474,74 +788,70 @@ Respond ONLY with a valid JSON array, no markdown, no explanation:
   );
 }
 
-function App() {
-  const [conferences, setConferences] = useState(load);
-  const [tab, setTab] = useState("dashboard");
-  const [editConf, setEditConf] = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const [toast, setToast] = useState("");
-  const blankForm = {name:"",location:"",quarter:1,month:"Jan",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"",end:"",size:"",score:7,notes:""};
-  const [newForm, setNewForm] = useState(blankForm);
-  const [editForm, setEditForm] = useState(null);
+// ─── APP ─────────────────────────────────────────────────────────────────────
+function App(){
+  const [all,setAll]=useState(()=>ld(SK,INITIAL));
+  const [leads,setLeads]=useState(()=>ld(LK,[]));
+  const [tab,setTab]=useState("dashboard");
+  const [vert,setVert]=useState("All");
+  const [editC,setEditC]=useState(null); const [showAdd,setShowAdd]=useState(false);
+  const [toast,setToast]=useState("");
+  const blank={name:"",location:"",quarter:1,month:"Jan",vertical:"PSP",status:"TBD",attendees:[],participation:"",start:"",end:"",size:"",score:7,notes:""};
+  const [newF,setNewF]=useState(blank); const [editF,setEditF]=useState(null);
 
-  useEffect(()=>save(conferences),[conferences]);
+  useEffect(()=>sv(SK,all),[all]);
+  useEffect(()=>sv(LK,leads),[leads]);
 
-  const showToast = msg => { setToast(msg); setTimeout(()=>setToast(""),2200); };
+  const toast2=msg=>{setToast(msg);setTimeout(()=>setToast(""),2400);};
+  const startEdit=c=>{setEditC(c);setEditF({...c,attendees:[...c.attendees]});};
+  const saveEdit=()=>{setAll(p=>p.map(c=>c.id===editC.id?{...editF,size:editF.size===""?null:Number(editF.size),score:Number(editF.score)}:c));setEditC(null);setEditF(null);toast2("Saved!");};
+  const addC=()=>{setAll(p=>[...p,{...newF,id:Date.now(),size:newF.size===""?null:Number(newF.size),score:Number(newF.score),attendees:[...newF.attendees]}]);setShowAdd(false);setNewF(blank);toast2("Added!");};
+  const delC=id=>{if(window.confirm("Delete?")){setAll(p=>p.filter(c=>c.id!==id));toast2("Deleted.");}};
 
-  const startEdit = c => { setEditConf(c); setEditForm({...c,attendees:[...c.attendees]}); };
-  const saveEdit = () => {
-    setConferences(p=>p.map(c=>c.id===editConf.id?{...editForm,size:editForm.size===""?null:Number(editForm.size),score:Number(editForm.score)}:c));
-    setEditConf(null); setEditForm(null); showToast("Saved!");
-  };
-  const addConf = () => {
-    setConferences(p=>[...p,{...newForm,id:Date.now(),size:newForm.size===""?null:Number(newForm.size),score:Number(newForm.score),attendees:[...newForm.attendees]}]);
-    setShowAdd(false); setNewForm(blankForm); showToast("Conference added!");
-  };
-  const deleteConf = id => { if(window.confirm("Delete this conference?")){ setConferences(p=>p.filter(c=>c.id!==id)); showToast("Deleted."); }};
-  const addFromDiscover = c => { setConferences(p=>[...p,c]); showToast(`${c.name} added!`); };
-
-  const TABS = [["dashboard","Dashboard"],["events","All Events"],["planner","Monthly Planner"],["discover","Discover"]];
+  const TABS=[["dashboard","Dashboard"],["events","All Events"],["planner","Monthly Planner"],["confmode","Conference Mode"],["leads","All Leads"],["discover","Discover"]];
+  const props={all,vert,setVert};
+  const unsynced=leads.filter(l=>!l.syncedToHS).length;
 
   return (
-    <div style={{minHeight:"100vh",background:"#f8f9fa"}}>
-      {/* Nav */}
-      <div style={{background:"#111827",padding:"0 28px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
-        <div style={{display:"flex",alignItems:"center",gap:28}}>
-          <div style={{padding:"14px 0"}}>
-            <div style={{fontSize:16,fontWeight:700,color:"#fff",letterSpacing:"-0.01em"}}>Grain</div>
+    <div style={{minHeight:"100vh",background:"#f4f5f7"}}>
+      <div style={{background:"#111827",padding:"0 24px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 4px rgba(0,0,0,0.3)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:24}}>
+          <div style={{padding:"13px 0"}}>
+            <div style={{fontSize:15,fontWeight:700,color:"#fff",letterSpacing:"-0.01em"}}>Grain</div>
             <div style={{fontSize:10,color:"#6b7280",marginTop:1,letterSpacing:"0.04em",textTransform:"uppercase"}}>Conference Intelligence</div>
           </div>
-          <div style={{display:"flex",gap:2}}>
+          <div style={{display:"flex",gap:1,flexWrap:"wrap"}}>
             {TABS.map(([id,label])=>(
-              <button key={id} onClick={()=>setTab(id)} style={{padding:"8px 14px",borderRadius:8,border:"none",background:tab===id?"rgba(255,255,255,0.12)":"transparent",color:tab===id?"#fff":"#9ca3af",fontSize:13,fontWeight:tab===id?600:400,cursor:"pointer"}}>
+              <button key={id} onClick={()=>setTab(id)} style={{padding:"7px 12px",borderRadius:7,border:"none",background:tab===id?"rgba(255,255,255,0.13)":"transparent",color:tab===id?"#fff":"#9ca3af",fontSize:12,fontWeight:tab===id?600:400,cursor:"pointer",position:"relative"}}>
                 {label}
+                {id==="leads"&&unsynced>0&&<span style={{position:"absolute",top:4,right:4,width:6,height:6,borderRadius:"50%",background:"#f97316"}}/>}
+                {id==="confmode"&&<span style={{marginLeft:4,fontSize:10,background:"#1a56db",color:"#fff",padding:"1px 5px",borderRadius:3,verticalAlign:"middle"}}>NEW</span>}
               </button>
             ))}
           </div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          {toast && <span style={{fontSize:12,color:"#34d399",fontWeight:600}}>{toast}</span>}
-          <button onClick={()=>setShowAdd(true)} style={{...btn({background:"#1a56db",padding:"7px 16px"})}}>+ Add event</button>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          {toast&&<span style={{fontSize:12,color:"#34d399",fontWeight:600}}>{toast}</span>}
+          <button onClick={()=>setShowAdd(true)} style={BS({background:"#1a56db",padding:"6px 14px",fontSize:12})}>+ Add event</button>
         </div>
       </div>
 
-      {/* Content */}
-      <div style={{padding:"24px 28px",maxWidth:1320,margin:"0 auto"}}>
-        {tab==="dashboard" && <Dashboard conferences={conferences} onEdit={startEdit}/>}
-        {tab==="events" && <Events conferences={conferences} onEdit={startEdit} onDelete={deleteConf} onAdd={()=>setShowAdd(true)}/>}
-        {tab==="planner" && <Planner conferences={conferences} onEdit={startEdit}/>}
-        {tab==="discover" && <Discover conferences={conferences} onAdd={addFromDiscover}/>}
+      <div style={{padding:"22px 24px",maxWidth:1340,margin:"0 auto"}}>
+        {tab==="dashboard"&&<Dashboard {...props} leads={leads} onEdit={startEdit}/>}
+        {tab==="events"&&<Events {...props} onEdit={startEdit} onDelete={delC} onAdd={()=>setShowAdd(true)}/>}
+        {tab==="planner"&&<Planner {...props} onEdit={startEdit}/>}
+        {tab==="confmode"&&<ConferenceMode all={all} leads={leads} setLeads={setLeads} toast2={toast2}/>}
+        {tab==="leads"&&<AllLeads all={all} leads={leads} setLeads={setLeads} toast2={toast2}/>}
+        {tab==="discover"&&<Discover all={all} onAdd={c=>{setAll(p=>[...p,c]);toast2(c.name+" added!");}}/>}
       </div>
 
-      {/* Modals */}
-      {editConf && editForm && <ConferenceForm form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={()=>{setEditConf(null);setEditForm(null);}} title={`Edit — ${editConf.name}`}/>}
-      {showAdd && <ConferenceForm form={newForm} setForm={setNewForm} onSave={addConf} onCancel={()=>{setShowAdd(false);setNewForm(blankForm);}} title="Add new conference"/>}
+      {editC&&editF&&<ConfForm form={editF} setForm={setEditF} onSave={saveEdit} onCancel={()=>{setEditC(null);setEditF(null);}} title={`Edit — ${editC.name}`}/>}
+      {showAdd&&<ConfForm form={newF} setForm={setNewF} onSave={addC} onCancel={()=>{setShowAdd(false);setNewF(blank);}} title="Add new conference"/>}
     </div>
   );
 }
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App/>);
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
