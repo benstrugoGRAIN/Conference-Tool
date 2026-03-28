@@ -406,12 +406,20 @@ function ConferenceMode({all,leads,setLeads,toast2}){
   const going=all.filter(c=>c.status==="Going");
   const [selConf,setSelConf]=useState(null);
   const [showLead,setShowLead]=useState(false);
-  const [showLeads,setShowLeads]=useState(false);
-  const blank={firstName:"",lastName:"",company:"",role:"",email:"",phone:"",warmth:"Warm",notes:"",confId:null,syncedToHS:false,hsContactId:null};
+  const [editingLead,setEditingLead]=useState(null);
+  const blank={firstName:"",lastName:"",company:"",role:"",email:"",phone:"",warmth:"Warm",notes:"",followUp:"",confId:null,syncedToHS:false,hsContactId:null};
   const [leadForm,setLeadForm]=useState(blank);
+  const [editForm,setEditForm]=useState(null);
   const [syncing,setSyncing]=useState({});
+  const [filterW,setFilterW]=useState("all");
+  const [search,setSearch]=useState("");
 
-  const confLeads=selConf?leads.filter(l=>l.confId===selConf.id):[];
+  const allConfLeads=selConf?leads.filter(l=>l.confId===selConf.id):[];
+  const confLeads=allConfLeads.filter(l=>{
+    if(filterW!=="all"&&l.warmth!==filterW) return false;
+    if(search&&![l.firstName,l.lastName,l.company,l.role,l.email].filter(Boolean).some(x=>x.toLowerCase().includes(search.toLowerCase()))) return false;
+    return true;
+  });
 
   const saveLead=()=>{
     if(!leadForm.firstName&&!leadForm.company){alert("Name or company required.");return;}
@@ -420,6 +428,32 @@ function ConferenceMode({all,leads,setLeads,toast2}){
     setLeadForm({...blank,confId:selConf.id});
     setShowLead(false);
     toast2("Lead saved!");
+  };
+
+  const saveEdit=()=>{
+    setLeads(p=>p.map(l=>l.id===editingLead?{...editForm}:l));
+    setEditingLead(null); setEditForm(null);
+    toast2("Lead updated!");
+  };
+
+  const exportCSV=()=>{
+    const rows=[["First Name","Last Name","Company","Role","Email","Phone","Warmth","Follow-up","Notes","Conference","Captured At","Synced to HubSpot"]];
+    allConfLeads.forEach(l=>rows.push([l.firstName||"",l.lastName||"",l.company||"",l.role||"",l.email||"",l.phone||"",l.warmth||"",l.followUp||"",l.notes||"",l.confName||"",l.capturedAt?new Date(l.capturedAt).toLocaleDateString():"",l.syncedToHS?"Yes":"No"]));
+    const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const a=document.createElement("a"); a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
+    a.download=`leads-${selConf.name.replace(/\s+/g,"-")}.csv`; a.click();
+    toast2("CSV downloaded!");
+  };
+
+  const exportExcel=()=>{
+    const rows=[["First Name","Last Name","Company","Role","Email","Phone","Warmth","Follow-up","Notes","Conference","Captured At","Synced to HubSpot"]];
+    allConfLeads.forEach(l=>rows.push([l.firstName||"",l.lastName||"",l.company||"",l.role||"",l.email||"",l.phone||"",l.warmth||"",l.followUp||"",l.notes||"",l.confName||"",l.capturedAt?new Date(l.capturedAt).toLocaleDateString():"",l.syncedToHS?"Yes":"No"]));
+    let xml=`<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Leads"><Table>`;
+    rows.forEach(r=>{xml+=`<Row>`;r.forEach(v=>{xml+=`<Cell><Data ss:Type="String">${String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</Data></Cell>`;});xml+=`</Row>`;});
+    xml+=`</Table></Worksheet></Workbook>`;
+    const a=document.createElement("a"); a.href="data:application/vnd.ms-excel;charset=utf-8,"+encodeURIComponent(xml);
+    a.download=`leads-${selConf.name.replace(/\s+/g,"-")}.xls`; a.click();
+    toast2("Excel downloaded!");
   };
 
   const syncToHubSpot=async(lead)=>{
@@ -459,7 +493,7 @@ function ConferenceMode({all,leads,setLeads,toast2}){
     setSyncing(s=>({...s,[lead.id]:false}));
   };
 
-  const deleteLead=id=>{if(window.confirm("Delete this lead?"))setLeads(p=>p.filter(l=>l.id!==id));};
+
 
   if(!selConf){
     return (
@@ -491,82 +525,83 @@ function ConferenceMode({all,leads,setLeads,toast2}){
   return (
     <div>
       {/* Conference header */}
-      <div style={{background:"#111827",borderRadius:12,padding:"16px 20px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{background:"#111827",borderRadius:12,padding:"16px 20px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontSize:16,fontWeight:700,color:"#fff"}}>{selConf.name}</div>
-          <div style={{fontSize:12,color:"#9ca3af",marginTop:2}}>{selConf.location} · {selConf.month} 2026</div>
+          <div style={{fontSize:12,color:"#9ca3af",marginTop:2}}>{selConf.location} · {selConf.month} 2026 · {allConfLeads.length} leads captured</div>
         </div>
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={()=>setShowLeads(true)} style={BS({background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)"})}>{confLeads.length} leads</button>
-          <button onClick={()=>setShowLead(true)} style={BS({background:"#1a56db"})}>+ Capture lead</button>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={exportCSV} style={BS({background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",fontSize:12})}>↓ CSV</button>
+          <button onClick={exportExcel} style={BS({background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",fontSize:12})}>↓ Excel</button>
+          <button onClick={()=>{setLeadForm({...blank,confId:selConf.id});setShowLead(true);}} style={BS({background:"#1a56db"})}>+ Capture lead</button>
           <button onClick={()=>setSelConf(null)} style={BS({background:"transparent",border:"1px solid rgba(255,255,255,0.2)"})}>← Back</button>
         </div>
       </div>
 
-      {/* Conference notes */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-        <Card>
-          <CardHead title="Quick stats"/>
-          <div style={{padding:"12px 18px"}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {[
-                {label:"Leads captured",value:confLeads.length},
-                {label:"Hot leads",value:confLeads.filter(l=>l.warmth==="Hot").length},
-                {label:"Warm leads",value:confLeads.filter(l=>l.warmth==="Warm").length},
-                {label:"Synced to HubSpot",value:confLeads.filter(l=>l.syncedToHS).length},
-              ].map(m=>(
-                <div key={m.label} style={{background:"#f9fafb",borderRadius:8,padding:"10px 12px"}}>
-                  <div style={{fontSize:11,color:"#9ca3af",marginBottom:3}}>{m.label}</div>
-                  <div style={{fontSize:22,fontWeight:700,color:"#111827"}}>{m.value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <CardHead title="Team at this conference"/>
-          <div style={{padding:"12px 18px"}}>
-            {selConf.attendees.length===0&&<div style={{fontSize:13,color:"#d1d5db"}}>No team members assigned</div>}
-            {selConf.attendees.map(a=>(
-              <div key={a} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                <Avatar name={a} size={32}/>
-                <div>
-                  <div style={{fontSize:13,fontWeight:600,color:"#111827"}}>{a}</div>
-                  <div style={{fontSize:11,color:"#9ca3af"}}>{leads.filter(l=>l.confId===selConf.id&&l.capturedBy===a).length} leads captured</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
+      {/* Stats row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:18}}>
+        {[
+          {label:"Total leads",value:allConfLeads.length},
+          {label:"Hot",value:allConfLeads.filter(l=>l.warmth==="Hot").length},
+          {label:"Warm",value:allConfLeads.filter(l=>l.warmth==="Warm").length},
+          {label:"Synced to HubSpot",value:allConfLeads.filter(l=>l.syncedToHS).length},
+        ].map(m=>(
+          <Card key={m.label} style={{padding:"12px 16px"}}>
+            <div style={{fontSize:11,color:"#9ca3af",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>{m.label}</div>
+            <div style={{fontSize:26,fontWeight:700,color:"#111827"}}>{m.value}</div>
+          </Card>
+        ))}
       </div>
 
-      {/* Recent leads preview */}
-      {confLeads.length>0&&(
-        <Card style={{marginTop:16}}>
-          <CardHead title="Leads captured" right={<button onClick={()=>setShowLeads(true)} style={{fontSize:12,color:"#1a56db",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>View all →</button>}/>
-          <div>
-            {confLeads.slice(0,5).map(lead=>{
-              const wc=WARM_COLORS[lead.warmth]||WARM_COLORS.Warm;
-              return (
-                <div key={lead.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 18px",borderBottom:"1px solid #f9fafb"}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:600,color:"#111827"}}>{lead.firstName} {lead.lastName} {lead.company&&<span style={{fontSize:11,color:"#9ca3af",fontWeight:400}}>· {lead.company}</span>}</div>
-                    <div style={{fontSize:11,color:"#9ca3af",marginTop:1}}>{lead.role||"Role not set"} {lead.email&&`· ${lead.email}`}</div>
-                  </div>
-                  <span style={{background:wc.bg,color:wc.color,border:`1px solid ${wc.border}`,borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:600}}>{lead.warmth}</span>
-                  {lead.syncedToHS
-                    ? <span style={{fontSize:11,color:"#057a55",fontWeight:600}}>✓ HubSpot</span>
-                    : <button onClick={()=>syncToHubSpot(lead)} disabled={syncing[lead.id]} style={BS({fontSize:11,padding:"4px 10px",background:"#f97316",opacity:syncing[lead.id]?0.6:1})}>{syncing[lead.id]?"Syncing...":"→ HubSpot"}</button>
-                  }
-                </div>
-              );
-            })}
+      {/* Inline lead list */}
+      <Card>
+        <CardHead title="Leads at this conference" sub={selConf.name} right={
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{...IS,width:140,padding:"5px 8px",fontSize:12}}/>
+            <select style={{...IS,width:"auto",padding:"5px 8px",fontSize:12}} value={filterW} onChange={e=>setFilterW(e.target.value)}>
+              <option value="all">All</option>{["Hot","Warm","Cold"].map(w=><option key={w}>{w}</option>)}
+            </select>
           </div>
-        </Card>
-      )}
+        }/>
+        {confLeads.length===0&&(
+          <div style={{padding:"32px",textAlign:"center",color:"#9ca3af",fontSize:13}}>
+            {allConfLeads.length===0?"No leads yet — hit \"Capture lead\" to start.":"No leads match your filter."}
+          </div>
+        )}
+        {confLeads.map(lead=>{
+          const wc=WARM_COLORS[lead.warmth]||WARM_COLORS.Warm;
+          return (
+            <div key={lead.id} style={{padding:"14px 18px",borderBottom:"1px solid #f9fafb"}}>
+              <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3,flexWrap:"wrap"}}>
+                    <span style={{fontSize:14,fontWeight:700,color:"#111827"}}>{lead.firstName} {lead.lastName}</span>
+                    {lead.company&&<span style={{fontSize:12,color:"#6b7280"}}>· {lead.company}</span>}
+                    {lead.role&&<span style={{fontSize:12,color:"#9ca3af"}}>· {lead.role}</span>}
+                    <span style={{background:wc.bg,color:wc.color,border:`1px solid ${wc.border}`,borderRadius:4,padding:"1px 7px",fontSize:11,fontWeight:600}}>{lead.warmth}</span>
+                    {lead.syncedToHS&&<span style={{fontSize:11,color:"#057a55",fontWeight:600}}>✓ HubSpot</span>}
+                  </div>
+                  <div style={{fontSize:12,color:"#6b7280",display:"flex",gap:14,flexWrap:"wrap",marginBottom:lead.notes||lead.followUp?6:0}}>
+                    {lead.email&&<span>✉ {lead.email}</span>}
+                    {lead.phone&&<span>☎ {lead.phone}</span>}
+                    {lead.capturedBy&&<span>👤 {lead.capturedBy.split(" ")[0]}</span>}
+                    {lead.capturedAt&&<span style={{color:"#d1d5db"}}>{new Date(lead.capturedAt).toLocaleDateString()}</span>}
+                  </div>
+                  {lead.notes&&<div style={{fontSize:12,color:"#374151",background:"#f9fafb",borderRadius:6,padding:"6px 10px",marginTop:4,border:"1px solid #f0f0f0"}}><span style={{fontWeight:600,color:"#9ca3af",fontSize:11}}>NOTES </span>{lead.notes}</div>}
+                  {lead.followUp&&<div style={{fontSize:12,color:"#1a56db",background:"#eff6ff",borderRadius:6,padding:"6px 10px",marginTop:4,border:"1px solid #bfdbfe"}}><span style={{fontWeight:600,fontSize:11}}>FOLLOW-UP </span>{lead.followUp}</div>}
+                </div>
+                <div style={{display:"flex",gap:6,flexShrink:0,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                  <button onClick={()=>{setEditingLead(lead.id);setEditForm({...lead});}} style={{padding:"5px 10px",border:"1px solid #e5e7eb",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#374151"}}>Edit</button>
+                  {!lead.syncedToHS&&<button onClick={()=>syncToHubSpot(lead)} disabled={syncing[lead.id]} style={BS({fontSize:11,padding:"5px 10px",background:"#f97316",opacity:syncing[lead.id]?0.6:1})}>{syncing[lead.id]?"...":"→ HS"}</button>}
+                  <button onClick={()=>{if(window.confirm("Delete?"))setLeads(p=>p.filter(l=>l.id!==lead.id));}} style={{padding:"5px 8px",border:"1px solid #fee2e2",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#ef4444"}}>×</button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </Card>
 
-      {/* Lead capture form */}
+      {/* Capture lead modal */}
       {showLead&&(
         <Modal title="Capture lead" onClose={()=>setShowLead(false)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
@@ -583,12 +618,12 @@ function ConferenceMode({all,leads,setLeads,toast2}){
             </F>
             <F label="Captured by">
               <select style={IS} value={leadForm.capturedBy||""} onChange={e=>setLeadForm(f=>({...f,capturedBy:e.target.value}))}>
-                <option value="">Select...</option>
-                {TEAM.map(t=><option key={t}>{t}</option>)}
+                <option value="">Select...</option>{TEAM.map(t=><option key={t}>{t}</option>)}
               </select>
             </F>
           </div>
-          <F label="Notes"><textarea style={{...IS,height:72,resize:"vertical"}} value={leadForm.notes} onChange={e=>setLeadForm(f=>({...f,notes:e.target.value}))} placeholder="What did you discuss? FX pain points, volume, interest level..."/></F>
+          <F label="Notes / what you discussed"><textarea style={{...IS,height:64,resize:"vertical"}} value={leadForm.notes} onChange={e=>setLeadForm(f=>({...f,notes:e.target.value}))} placeholder="FX pain points, monthly volume, interest level..."/></F>
+          <F label="Follow-up action"><input style={IS} value={leadForm.followUp||""} onChange={e=>setLeadForm(f=>({...f,followUp:e.target.value}))} placeholder="e.g. Send deck by Friday, Book demo next week..."/></F>
           <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
             <button onClick={()=>setShowLead(false)} style={BS({background:"#fff",color:"#374151",border:"1px solid #e5e7eb"})}>Cancel</button>
             <button onClick={saveLead} style={BS()}>Save lead</button>
@@ -596,38 +631,36 @@ function ConferenceMode({all,leads,setLeads,toast2}){
         </Modal>
       )}
 
-      {/* All leads modal */}
-      {showLeads&&(
-        <Modal title={`All leads — ${selConf.name}`} onClose={()=>setShowLeads(false)} maxW={780}>
-          {confLeads.length===0&&<div style={{fontSize:13,color:"#9ca3af",textAlign:"center",padding:"32px 0"}}>No leads yet. Hit "Capture lead" to start.</div>}
-          {confLeads.map(lead=>{
-            const wc=WARM_COLORS[lead.warmth]||WARM_COLORS.Warm;
-            return (
-              <div key={lead.id} style={{background:"#f9fafb",borderRadius:10,padding:"14px 16px",marginBottom:10}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-                  <div>
-                    <span style={{fontSize:14,fontWeight:700,color:"#111827"}}>{lead.firstName} {lead.lastName}</span>
-                    {lead.company&&<span style={{fontSize:13,color:"#6b7280",marginLeft:8}}>{lead.company}</span>}
-                    {lead.role&&<span style={{fontSize:12,color:"#9ca3af",marginLeft:8}}>{lead.role}</span>}
-                  </div>
-                  <span style={{background:wc.bg,color:wc.color,border:`1px solid ${wc.border}`,borderRadius:4,padding:"2px 10px",fontSize:12,fontWeight:600}}>{lead.warmth}</span>
-                </div>
-                <div style={{fontSize:12,color:"#6b7280",marginBottom:8,display:"flex",gap:16,flexWrap:"wrap"}}>
-                  {lead.email&&<span>✉ {lead.email}</span>}
-                  {lead.phone&&<span>☎ {lead.phone}</span>}
-                  {lead.capturedBy&&<span>👤 {lead.capturedBy.split(" ")[0]}</span>}
-                </div>
-                {lead.notes&&<div style={{fontSize:12,color:"#374151",background:"#fff",borderRadius:6,padding:"8px 10px",marginBottom:8,border:"1px solid #e5e7eb"}}>{lead.notes}</div>}
-                <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-                  <button onClick={()=>deleteLead(lead.id)} style={{padding:"4px 10px",border:"1px solid #fee2e2",borderRadius:6,background:"#fff",fontSize:11,cursor:"pointer",color:"#ef4444"}}>Delete</button>
-                  {lead.syncedToHS
-                    ? <span style={{fontSize:12,color:"#057a55",fontWeight:600,padding:"4px 10px"}}>✓ Synced to HubSpot</span>
-                    : <button onClick={()=>syncToHubSpot(lead)} disabled={syncing[lead.id]} style={BS({fontSize:12,padding:"5px 14px",background:"#f97316",opacity:syncing[lead.id]?0.6:1})}>{syncing[lead.id]?"Syncing...":"Sync to HubSpot →"}</button>
-                  }
-                </div>
+      {/* Edit lead modal */}
+      {editingLead&&editForm&&(
+        <Modal title="Edit lead" onClose={()=>{setEditingLead(null);setEditForm(null);}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <F label="First name"><input style={IS} value={editForm.firstName||""} onChange={e=>setEditForm(f=>({...f,firstName:e.target.value}))}/></F>
+            <F label="Last name"><input style={IS} value={editForm.lastName||""} onChange={e=>setEditForm(f=>({...f,lastName:e.target.value}))}/></F>
+            <F label="Company"><input style={IS} value={editForm.company||""} onChange={e=>setEditForm(f=>({...f,company:e.target.value}))}/></F>
+            <F label="Role / Title"><input style={IS} value={editForm.role||""} onChange={e=>setEditForm(f=>({...f,role:e.target.value}))}/></F>
+            <F label="Email"><input style={IS} value={editForm.email||""} onChange={e=>setEditForm(f=>({...f,email:e.target.value}))}/></F>
+            <F label="Phone"><input style={IS} value={editForm.phone||""} onChange={e=>setEditForm(f=>({...f,phone:e.target.value}))}/></F>
+            <F label="Warmth">
+              <div style={{display:"flex",gap:6}}>
+                {["Hot","Warm","Cold"].map(w=>{const wc=WARM_COLORS[w];return <button key={w} onClick={()=>setEditForm(f=>({...f,warmth:w}))} style={{flex:1,padding:"7px",borderRadius:8,border:`1.5px solid ${editForm.warmth===w?wc.border:"#e5e7eb"}`,background:editForm.warmth===w?wc.bg:"#fff",color:editForm.warmth===w?wc.color:"#6b7280",cursor:"pointer",fontSize:13,fontWeight:editForm.warmth===w?700:400}}>{w}</button>;})}
               </div>
-            );
-          })}
+            </F>
+            <F label="Captured by">
+              <select style={IS} value={editForm.capturedBy||""} onChange={e=>setEditForm(f=>({...f,capturedBy:e.target.value}))}>
+                <option value="">Select...</option>{TEAM.map(t=><option key={t}>{t}</option>)}
+              </select>
+            </F>
+          </div>
+          <F label="Notes / what you discussed"><textarea style={{...IS,height:64,resize:"vertical"}} value={editForm.notes||""} onChange={e=>setEditForm(f=>({...f,notes:e.target.value}))} placeholder="FX pain points, monthly volume, interest level..."/></F>
+          <F label="Follow-up action"><input style={IS} value={editForm.followUp||""} onChange={e=>setEditForm(f=>({...f,followUp:e.target.value}))} placeholder="e.g. Send deck by Friday, Book demo next week..."/></F>
+          <div style={{padding:"10px 14px",background:"#f9fafb",borderRadius:8,marginBottom:12,fontSize:12,color:"#6b7280"}}>
+            Captured: {editForm.capturedAt?new Date(editForm.capturedAt).toLocaleString():"Unknown"} · {editForm.syncedToHS?"✓ Synced to HubSpot":"Not yet synced"}
+          </div>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+            <button onClick={()=>{setEditingLead(null);setEditForm(null);}} style={BS({background:"#fff",color:"#374151",border:"1px solid #e5e7eb"})}>Cancel</button>
+            <button onClick={saveEdit} style={BS()}>Save changes</button>
+          </div>
         </Modal>
       )}
     </div>
